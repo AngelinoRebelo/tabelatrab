@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro de Serviços</title>
+    <title>Registro de Serviços - Victorino</title>
     
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -15,21 +15,30 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Estilos adicionais para garantir visual consistente -->
+    <!-- Estilos globais -->
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        /* Remove setas dos inputs numéricos */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
     </style>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-100 text-gray-800">
 
     <div id="root"></div>
 
     <!-- Script Principal da Aplicação -->
     <script type="text/babel" data-type="module">
-        // Importações do React globais via CDN
+        // Importações do React globais
         const { useState, useEffect, useMemo } = React;
 
-        // --- Ícones SVG (Substituindo Lucide-React para funcionar sem build) ---
+        // --- Ícones SVG ---
         const Icon = ({ children, className }) => (
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
                 {children}
@@ -43,17 +52,18 @@
         const Trash2 = ({ className }) => <Icon className={className}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></Icon>;
         const LogOut = ({ className }) => <Icon className={className}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></Icon>;
         const Lock = ({ className }) => <Icon className={className}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></Icon>;
+        const ShieldAlert = ({ className }) => <Icon className={className}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></Icon>;
 
-        // --- Módulos do Firebase via CDN ---
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+        // --- Módulos do Firebase via CDN (Versão Compatível) ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { 
             getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, 
             onSnapshot, query, where, getDocs, writeBatch, serverTimestamp 
-        } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         // =================================================================================
-        // CONFIGURAÇÃO DO FIREBASE (Suas chaves inseridas)
+        // SUAS CHAVES DO FIREBASE
         // =================================================================================
         
         const firebaseConfig = {
@@ -67,20 +77,20 @@
         
         // =================================================================================
 
-        // Inicialização do Firebase
+        // Inicialização
         let app, auth, db;
         try {
             app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
         } catch (e) {
-            console.error("Erro ao inicializar Firebase.", e);
+            console.error("Erro ao inicializar Firebase", e);
         }
 
         const APP_ID = 'meu-registro-servicos'; 
 
-        // --- Componente de Login ---
-        function LoginScreen({ onLogin }) {
+        // --- TELA DE LOGIN ---
+        function LoginScreen() {
             const [email, setEmail] = useState('');
             const [password, setPassword] = useState('');
             const [error, setError] = useState('');
@@ -92,14 +102,12 @@
                 setLoggingIn(true);
                 try {
                     await signInWithEmailAndPassword(auth, email, password);
-                    // O onAuthStateChanged vai lidar com a transição
                 } catch (err) {
                     console.error("Erro login:", err);
-                    let msg = "Erro ao fazer login. Verifique suas credenciais.";
-                    if (err.code === 'auth/invalid-credential') msg = "E-mail ou senha incorretos.";
-                    if (err.code === 'auth/user-not-found') msg = "Usuário não encontrado.";
-                    if (err.code === 'auth/wrong-password') msg = "Senha incorreta.";
-                    if (err.code === 'auth/too-many-requests') msg = "Muitas tentativas. Tente mais tarde.";
+                    let msg = "Erro ao fazer login.";
+                    if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') msg = "E-mail ou senha incorretos.";
+                    else if (err.code === 'auth/too-many-requests') msg = "Muitas tentativas. Aguarde um instante.";
+                    else if (err.code === 'auth/user-not-found') msg = "Usuário não encontrado.";
                     setError(msg);
                     setLoggingIn(false);
                 }
@@ -107,49 +115,27 @@
 
             return (
                 <div className="min-h-screen flex items-center justify-center bg-gray-200 p-4">
-                    <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md border border-gray-100">
-                        <div className="text-center mb-8">
-                            <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <Lock className="w-8 h-8 text-blue-600" />
+                    <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-sm border border-gray-100">
+                        <div className="text-center mb-6">
+                            <div className="bg-blue-100 w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3">
+                                <Lock className="w-6 h-6 text-blue-600" />
                             </div>
-                            <h2 className="text-2xl font-bold text-gray-800">Acesso Restrito</h2>
-                            <p className="text-gray-500 text-sm mt-1">Digite seus dados para acessar o sistema.</p>
+                            <h2 className="text-xl font-bold text-gray-800">Controle de Serviços</h2>
+                            <p className="text-gray-500 text-sm mt-1">Acesso Restrito</p>
                         </div>
                         
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            {error && (
-                                <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm text-center border border-red-100">
-                                    {error}
-                                </div>
-                            )}
+                            {error && <div className="bg-red-50 text-red-600 p-3 rounded text-xs text-center border border-red-100">{error}</div>}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
-                                <input 
-                                    type="email" 
-                                    required
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                    placeholder="seu@email.com"
-                                />
+                                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">E-mail</label>
+                                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-2 border border-gray-300 rounded focus:border-blue-500 outline-none" placeholder="seu@email.com" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
-                                <input 
-                                    type="password" 
-                                    required
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                    placeholder="Sua senha"
-                                />
+                                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Senha</label>
+                                <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-2 border border-gray-300 rounded focus:border-blue-500 outline-none" placeholder="******" />
                             </div>
-                            <button 
-                                type="submit" 
-                                disabled={loggingIn}
-                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center shadow-md disabled:opacity-70 disabled:cursor-not-allowed"
-                            >
-                                {loggingIn ? 'Entrando...' : 'Entrar no Sistema'}
+                            <button type="submit" disabled={loggingIn} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded transition-colors disabled:opacity-70">
+                                {loggingIn ? 'Entrando...' : 'Entrar'}
                             </button>
                         </form>
                     </div>
@@ -157,15 +143,14 @@
             );
         }
 
-        // --- Componente Principal ---
+        // --- APLICAÇÃO PRINCIPAL ---
         function ServiceRegistryApp() {
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(true);
-            
-            // Estado para seleção de data
-            const [selectedDate, setSelectedDate] = useState(new Date(2025, 9, 1)); 
+            const [permissionError, setPermissionError] = useState(false);
+            const [selectedDate, setSelectedDate] = useState(new Date(2025, 9, 1)); // Outubro 2025
 
-            // Estados de dados
+            // Dados
             const [services, setServices] = useState([]);
             const [deposits, setDeposits] = useState([]);
 
@@ -178,324 +163,311 @@
                 return () => unsubscribe();
             }, []);
 
-            // População Automática
+            // Preenchimento Automático (Outubro/2025)
             useEffect(() => {
-                if (!user || !db) return;
+                if (!user || !db || permissionError) return;
+                const populate = async () => {
+                    try {
+                        const sRef = collection(db, 'apps', APP_ID, 'users', user.uid, 'services');
+                        const q = query(sRef, where('date', '==', '2025-10-04'));
+                        const snap = await getDocs(q);
+                        if (!snap.empty) return;
 
-                const populateIfNeeded = async () => {
-                    const servicesRef = collection(db, 'apps', APP_ID, 'users', user.uid, 'services');
-                    const q = query(servicesRef, where('date', '==', '2025-10-04'));
-                    const snapshot = await getDocs(q);
+                        console.log("Criando dados iniciais...");
+                        const batch = writeBatch(db);
 
-                    if (!snapshot.empty) return;
+                        // Depósito Inicial
+                        const dRef = collection(db, 'apps', APP_ID, 'users', user.uid, 'deposits');
+                        const qD = query(dRef, where('date', '==', '2025-10-01'));
+                        const snapD = await getDocs(qD);
+                        if (snapD.empty) {
+                            batch.set(doc(dRef), { date: '2025-10-01', amount: 3222.97, description: 'SALDO MÊS DE SETEMBRO', createdAt: serverTimestamp() });
+                        }
 
-                    console.log("Preenchendo dados automáticos...");
-                    const batch = writeBatch(db);
-
-                    // Depósito
-                    const depositsRef = collection(db, 'apps', APP_ID, 'users', user.uid, 'deposits');
-                    const qDep = query(depositsRef, where('date', '==', '2025-10-01'));
-                    const snapDep = await getDocs(qDep);
-
-                    if (snapDep.empty) {
-                        const depositRef = doc(depositsRef);
-                        batch.set(depositRef, {
-                            date: '2025-10-01',
-                            amount: 3222.97,
-                            description: 'SALDO MÊS DE SETEMBRO',
-                            createdAt: serverTimestamp()
-                        });
+                        // Serviços Iniciais
+                        const initialData = [
+                            { date: '2025-10-04', value: 200, paidValue: 200, status: 'CONCLUÍDO' },
+                            { date: '2025-10-06', value: 200, paidValue: 200, status: 'CONCLUÍDO' },
+                            { date: '2025-10-08', value: 200, paidValue: 200, status: 'CONCLUÍDO' },
+                            { date: '2025-10-14', value: 200, paidValue: 200, status: 'CONCLUÍDO' },
+                        ];
+                        initialData.forEach(d => batch.set(doc(sRef), { ...d, description: 'Serviço', createdAt: serverTimestamp() }));
+                        
+                        await batch.commit();
+                    } catch (e) {
+                        console.error("Erro no preenchimento:", e);
+                        if (e.code === 'permission-denied') setPermissionError(true);
                     }
-
-                    // Serviços
-                    const servicesData = [
-                        { date: '2025-10-04', value: 200, paidValue: 200, status: 'CONCLUÍDO' },
-                        { date: '2025-10-06', value: 200, paidValue: 200, status: 'CONCLUÍDO' },
-                        { date: '2025-10-08', value: 200, paidValue: 200, status: 'CONCLUÍDO' },
-                        { date: '2025-10-14', value: 200, paidValue: 200, status: 'CONCLUÍDO' },
-                    ];
-
-                    servicesData.forEach(s => {
-                        const sRef = doc(servicesRef);
-                        batch.set(sRef, {
-                            date: s.date,
-                            description: 'Serviço Diário',
-                            value: s.value,
-                            paidValue: s.paidValue,
-                            status: s.status,
-                            createdAt: serverTimestamp()
-                        });
-                    });
-
-                    await batch.commit();
                 };
+                populate();
+            }, [user, permissionError]);
 
-                populateIfNeeded();
-            }, [user]);
-
-            // Carregamento de Dados
+            // Listeners em Tempo Real
             useEffect(() => {
                 if (!user || !db) return;
+                
+                const qS = query(collection(db, 'apps', APP_ID, 'users', user.uid, 'services'));
+                const unsubS = onSnapshot(qS, 
+                    (snap) => setServices(snap.docs.map(d => ({id: d.id, ...d.data()}))),
+                    (error) => {
+                        console.error("Erro Listener Serviços:", error);
+                        if (error.code === 'permission-denied') setPermissionError(true);
+                    }
+                );
 
-                // Busca Serviços
-                const servicesQuery = query(collection(db, 'apps', APP_ID, 'users', user.uid, 'services'));
-                const unsubServices = onSnapshot(servicesQuery, (snapshot) => {
-                    const loadedServices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setServices(loadedServices);
-                }, (error) => console.error("Erro serviços:", error));
+                const qD = query(collection(db, 'apps', APP_ID, 'users', user.uid, 'deposits'));
+                const unsubD = onSnapshot(qD, 
+                    (snap) => setDeposits(snap.docs.map(d => ({id: d.id, ...d.data()}))),
+                    (error) => {
+                        console.error("Erro Listener Depósitos:", error);
+                        if (error.code === 'permission-denied') setPermissionError(true);
+                    }
+                );
 
-                // Busca Depósitos
-                const depositsQuery = query(collection(db, 'apps', APP_ID, 'users', user.uid, 'deposits'));
-                const unsubDeposits = onSnapshot(depositsQuery, (snapshot) => {
-                    const loadedDeposits = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setDeposits(loadedDeposits);
-                }, (error) => console.error("Erro depósitos:", error));
-
-                return () => {
-                    unsubServices();
-                    unsubDeposits();
-                };
+                return () => { unsubS(); unsubD(); };
             }, [user]);
 
-            // Filtragem e Cálculos
-            const currentMonthServices = useMemo(() => {
-                return services.filter(service => {
-                    if (!service.date) return false;
-                    const sDate = new Date(service.date + 'T12:00:00');
-                    return sDate.getMonth() === selectedDate.getMonth() && 
-                           sDate.getFullYear() === selectedDate.getFullYear();
-                }).sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
-            }, [services, selectedDate]);
+            // Cálculos
+            const currentServices = useMemo(() => services.filter(s => {
+                if(!s.date) return false;
+                const d = new Date(s.date + 'T12:00:00');
+                return d.getMonth() === selectedDate.getMonth() && d.getFullYear() === selectedDate.getFullYear();
+            }).sort((a,b) => new Date(a.date) - new Date(b.date)), [services, selectedDate]);
 
-            const currentMonthDeposits = useMemo(() => {
-                return deposits.filter(dep => {
-                    if (!dep.date) return false;
-                    const dDate = new Date(dep.date + 'T12:00:00');
-                    return dDate.getMonth() === selectedDate.getMonth() && 
-                           dDate.getFullYear() === selectedDate.getFullYear();
-                });
-            }, [deposits, selectedDate]);
+            const currentDeposits = useMemo(() => deposits.filter(d => {
+                if(!d.date) return false;
+                const date = new Date(d.date + 'T12:00:00');
+                return date.getMonth() === selectedDate.getMonth() && date.getFullYear() === selectedDate.getFullYear();
+            }), [deposits, selectedDate]);
 
             const totals = useMemo(() => {
-                const totalProgramado = currentMonthServices.reduce((acc, curr) => acc + (Number(curr.value) || 0), 0);
-                const totalPago = currentMonthServices.reduce((acc, curr) => acc + (Number(curr.paidValue) || 0), 0);
-                const servicosConcluidos = currentMonthServices.filter(s => s.status === 'CONCLUÍDO').length;
-                const servicosRestantes = currentMonthServices.length - servicosConcluidos;
-                const totalDepositos = currentMonthDeposits.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
-                
-                const saldo = totalDepositos - totalPago; 
-                const totalAPagar = currentMonthServices.reduce((acc, curr) => {
-                   const val = Number(curr.value) || 0;
-                   const paid = Number(curr.paidValue) || 0;
-                   return acc + Math.max(0, val - paid);
-                }, 0);
+                const prog = currentServices.reduce((acc, c) => acc + (Number(c.value)||0), 0);
+                const paid = currentServices.reduce((acc, c) => acc + (Number(c.paidValue)||0), 0);
+                const done = currentServices.filter(s => s.status === 'CONCLUÍDO').length;
+                const remaining = currentServices.length - done;
+                const depTotal = currentDeposits.reduce((acc, c) => acc + (Number(c.amount)||0), 0);
+                const saldo = depTotal - paid;
+                return { prog, paid, done, remaining, depTotal, saldo };
+            }, [currentServices, currentDeposits]);
 
-                return { totalProgramado, totalPago, servicosConcluidos, servicosRestantes, totalAPagar, totalDepositos, saldo };
-            }, [currentMonthServices, currentMonthDeposits]);
-
-            // Helpers
-            const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-            const getDayOfWeek = (dateString) => {
-                if (!dateString) return '-';
-                const date = new Date(dateString + 'T12:00:00');
-                const days = ['DOMINGO', 'SEGUNDA', 'TERÇA', 'QUARTA', 'QUINTA', 'SEXTA', 'SÁBADO'];
-                return days[date.getDay()];
-            };
-
-            // Actions
-            const handleLogout = async () => {
-                if (confirm('Deseja realmente sair?')) {
-                    await signOut(auth);
-                }
-            };
-
+            // Ações
+            const handleLogout = () => confirm("Sair do sistema?") && signOut(auth);
             const changeMonth = (offset) => {
-                const newDate = new Date(selectedDate);
-                newDate.setMonth(newDate.getMonth() + offset);
-                setSelectedDate(newDate);
+                const d = new Date(selectedDate);
+                d.setMonth(d.getMonth() + offset);
+                setSelectedDate(d);
             };
-
             const addService = async () => {
-                if (!user) return;
                 const today = new Date();
-                let defaultDate = today.toISOString().split('T')[0];
-                if (today.getMonth() !== selectedDate.getMonth() || today.getFullYear() !== selectedDate.getFullYear()) {
-                    const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1, 12, 0, 0);
-                    defaultDate = d.toISOString().split('T')[0];
+                let d = today.toISOString().split('T')[0];
+                if(today.getMonth() !== selectedDate.getMonth()) {
+                    d = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1, 12).toISOString().split('T')[0];
                 }
-                await addDoc(collection(db, 'apps', APP_ID, 'users', user.uid, 'services'), {
-                    date: defaultDate, description: 'Novo Serviço', value: 0, paidValue: 0, status: 'PENDENTE', createdAt: serverTimestamp()
-                });
+                try {
+                    await addDoc(collection(db, 'apps', APP_ID, 'users', user.uid, 'services'), {
+                        date: d, value: 0, paidValue: 0, status: 'PENDENTE', createdAt: serverTimestamp()
+                    });
+                } catch(e) { if(e.code === 'permission-denied') setPermissionError(true); }
             };
-
-            const updateService = async (id, field, value) => {
-                if (!user) return;
-                const ref = doc(db, 'apps', APP_ID, 'users', user.uid, 'services', id);
-                await updateDoc(ref, { [field]: value });
+            const updService = async (id, f, v) => {
+                try {
+                    await updateDoc(doc(db, 'apps', APP_ID, 'users', user.uid, 'services', id), {[f]:v});
+                } catch(e) { if(e.code === 'permission-denied') setPermissionError(true); }
             };
-
-            const deleteService = async (id) => {
-                if (!user) return;
-                if (confirm('Excluir serviço?')) await deleteDoc(doc(db, 'apps', APP_ID, 'users', user.uid, 'services', id));
+            const delService = async (id) => {
+                if(confirm("Excluir?")) {
+                    try {
+                        await deleteDoc(doc(db, 'apps', APP_ID, 'users', user.uid, 'services', id));
+                    } catch(e) { if(e.code === 'permission-denied') setPermissionError(true); }
+                }
             };
 
             const addDeposit = async () => {
-                if (!user) return;
-                const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1, 12, 0, 0);
-                const defaultDate = d.toISOString().split('T')[0];
-                await addDoc(collection(db, 'apps', APP_ID, 'users', user.uid, 'deposits'), {
-                    date: defaultDate, amount: 0, description: 'Depósito Inicial', createdAt: serverTimestamp()
-                });
+                const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1, 12).toISOString().split('T')[0];
+                try {
+                    await addDoc(collection(db, 'apps', APP_ID, 'users', user.uid, 'deposits'), { date: d, amount: 0, createdAt: serverTimestamp() });
+                } catch(e) { if(e.code === 'permission-denied') setPermissionError(true); }
             };
-            
-            const updateDeposit = async (id, field, value) => {
-                if (!user) return;
-                const ref = doc(db, 'apps', APP_ID, 'users', user.uid, 'deposits', id);
-                await updateDoc(ref, { [field]: value });
+            const updDeposit = async (id, f, v) => {
+                try {
+                    await updateDoc(doc(db, 'apps', APP_ID, 'users', user.uid, 'deposits', id), {[f]:v});
+                } catch(e) { if(e.code === 'permission-denied') setPermissionError(true); }
             };
-            
-            const deleteDeposit = async (id) => {
-                if (!user) return;
-                if (confirm('Excluir depósito?')) await deleteDoc(doc(db, 'apps', APP_ID, 'users', user.uid, 'deposits', id));
+            const delDeposit = async (id) => {
+                if(confirm("Excluir?")) {
+                    try {
+                        await deleteDoc(doc(db, 'apps', APP_ID, 'users', user.uid, 'deposits', id));
+                    } catch(e) { if(e.code === 'permission-denied') setPermissionError(true); }
+                }
             };
 
-            if (loading) return <div className="flex items-center justify-center h-screen bg-gray-50 text-gray-500">Carregando...</div>;
-
-            if (!user) {
-                return <LoginScreen />;
-            }
+            const format = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+            const getDay = (ds) => ds ? ['DOMINGO','SEGUNDA','TERÇA','QUARTA','QUINTA','SEXTA','SÁBADO'][new Date(ds+'T12:00:00').getDay()] : '-';
 
             // Cores
-            const headerYellow = "bg-[#FFE699]"; 
-            const headerBlue = "bg-[#D9E1F2]";
-            const cellCyan = "bg-[#00B0F0]";
-            const cellBlueText = "text-[#0070C0]";
-            const summaryYellow = "bg-[#FFFF00]";
-            const summaryGrey = "bg-[#D9D9D9]";
+            const hY = "bg-[#FFE699]"; 
+            const hB = "bg-[#D9E1F2]";
+            const cC = "bg-[#00B0F0]";
+            const cB = "text-[#0070C0]";
+            const sY = "bg-[#FFFF00]";
+            const sG = "bg-[#D9D9D9]";
+
+            if (loading) return <div className="flex items-center justify-center h-screen bg-gray-50 text-gray-500">Carregando...</div>;
+            if (!user) return <LoginScreen />;
+
+            // --- TELA DE ERRO DE PERMISSÃO ---
+            if (permissionError) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center bg-gray-800 p-4">
+                        <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-2xl border border-red-500">
+                            <div className="flex items-center gap-3 mb-6 text-red-600">
+                                <ShieldAlert className="w-10 h-10" />
+                                <h2 className="text-2xl font-bold">Banco de Dados Bloqueado</h2>
+                            </div>
+                            <p className="mb-4 text-gray-700">
+                                O Firebase está bloqueando o acesso aos seus dados por segurança. Isso é normal em projetos novos.
+                                <br/>Para corrigir, você precisa adicionar as <strong>Regras de Segurança</strong> no painel.
+                            </p>
+                            
+                            <div className="bg-gray-100 p-4 rounded-lg mb-6 border border-gray-300">
+                                <h3 className="font-bold text-sm text-gray-500 uppercase mb-2">1. Vá até o Firebase Console > Firestore Database > Regras</h3>
+                                <h3 className="font-bold text-sm text-gray-500 uppercase mb-2">2. Substitua o código existente por este:</h3>
+                                <pre className="bg-gray-800 text-green-400 p-4 rounded overflow-x-auto text-sm font-mono">
+{`rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Permite que cada usuário leia/escreva APENAS seus próprios dados
+    match /apps/{appId}/users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}`}
+                                </pre>
+                            </div>
+                            <button onClick={() => window.location.reload()} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors">
+                                Já atualizei as regras, tentar novamente
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
 
             return (
-                <div className="min-h-screen bg-gray-100 p-4 font-sans text-sm md:text-base">
-                  <div className="max-w-7xl mx-auto mb-6 flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                    <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                      <Calendar className="w-6 h-6 text-blue-600" />
-                      Registro de Serviços
-                    </h1>
-                    
-                    <div className="flex items-center gap-4 bg-gray-50 p-2 rounded-lg border border-gray-200">
-                      <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-600"><ChevronLeft className="w-5 h-5" /></button>
-                      <div className="text-lg font-bold text-gray-800 w-40 text-center uppercase">
-                        {selectedDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-                      </div>
-                      <button onClick={() => changeMonth(1)} className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-600"><ChevronRight className="w-5 h-5" /></button>
-                    </div>
-
-                    <div className="flex gap-2">
-                        <button onClick={addService} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium shadow-sm transition-all">
-                          <Plus className="w-4 h-4" /> Novo Serviço
-                        </button>
-                        <button onClick={handleLogout} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 font-medium shadow-sm transition-all" title="Sair">
-                          <LogOut className="w-4 h-4" />
-                        </button>
-                    </div>
-                  </div>
-
-                  <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
-                    {/* Sidebar Esquerda (Resumo) */}
-                    <div className="flex flex-col gap-6 order-2 lg:order-1">
-                      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                        <h3 className="text-sm font-bold text-gray-500 mb-3 uppercase tracking-wider border-b pb-2">Resumo Financeiro</h3>
-                        <div className="grid grid-cols-1 gap-0 border border-gray-800 text-center font-bold text-sm">
-                          <div className={`${summaryYellow} p-2 border-b border-gray-800`}>SERV. PROGRAMADOS</div>
-                          <div className={`${summaryGrey} p-2 border-b border-gray-800 text-lg`}>{formatCurrency(totals.totalProgramado)}</div>
-                          <div className={`${summaryYellow} p-2 border-b border-gray-800`}>TOTAL PAGO</div>
-                          <div className={`${summaryGrey} p-2 border-b border-gray-800 text-lg`}>{formatCurrency(totals.totalPago)}</div>
-                          <div className="grid grid-cols-2 border-b border-gray-800">
-                            <div className={`${summaryYellow} p-2 border-r border-gray-800 flex flex-col justify-center`}><span>CONCLUÍDOS</span></div>
-                            <div className={`${summaryGrey} p-2 flex items-center justify-center text-lg`}>{totals.servicosConcluidos}</div>
-                          </div>
-                           <div className={`${summaryYellow} p-2 border-b border-gray-800`}>SERVIÇOS RESTANTES</div>
-                           <div className={`${summaryGrey} p-2 border-b border-gray-800 text-lg`}>{totals.servicosRestantes}</div>
-                           <div className={`${summaryYellow} p-2 border-b border-gray-800`}>SALDO</div>
-                           <div className={`${summaryGrey} p-2 text-lg text-gray-800`}>{formatCurrency(totals.saldo)}</div>
+                <div className="min-h-screen bg-gray-100 p-2 md:p-4 font-sans text-sm md:text-base">
+                    {/* Header */}
+                    <div className="max-w-7xl mx-auto mb-6 flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                        <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                            <Calendar className="w-6 h-6 text-blue-600" /> Registro de Serviços
+                        </h1>
+                        <div className="flex items-center gap-4 bg-gray-50 p-2 rounded-lg border border-gray-200">
+                            <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-gray-200 rounded-full transition-colors"><ChevronLeft className="w-5 h-5 text-gray-600" /></button>
+                            <div className="text-lg font-bold text-gray-800 w-40 text-center uppercase">{selectedDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</div>
+                            <button onClick={() => changeMonth(1)} className="p-2 hover:bg-gray-200 rounded-full transition-colors"><ChevronRight className="w-5 h-5 text-gray-600" /></button>
                         </div>
-                      </div>
-
-                      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                         <div className="flex justify-between items-center p-3 bg-gray-50 border-b border-gray-200">
-                            <h3 className="font-bold text-gray-700 text-sm uppercase">Depósitos / Entradas</h3>
-                            <button onClick={addDeposit} className="text-blue-600 hover:text-blue-800"><Plus className="w-5 h-5" /></button>
-                         </div>
-                         <table className="w-full text-sm">
-                           <thead className="bg-yellow-100 text-yellow-800 font-bold">
-                             <tr><th className="p-2 text-left">Descrição / Data</th><th className="p-2 text-right">Valor</th><th className="w-8"></th></tr>
-                           </thead>
-                           <tbody className="divide-y divide-gray-100">
-                             {currentMonthDeposits.map(dep => (
-                               <tr key={dep.id} className="hover:bg-gray-50">
-                                 <td className="p-2">
-                                    <input type="text" value={dep.description || ''} onChange={(e) => updateDeposit(dep.id, 'description', e.target.value)} placeholder="Descrição" className="w-full bg-transparent border-none p-0 text-xs focus:ring-0 font-bold text-gray-700 uppercase mb-1" />
-                                    <input type="date" value={dep.date} onChange={(e) => updateDeposit(dep.id, 'date', e.target.value)} className="w-full bg-transparent border-none p-0 text-xs focus:ring-0 text-gray-400" />
-                                 </td>
-                                 <td className="p-2 text-right font-bold text-green-700 align-top">
-                                    <div className="flex justify-end items-center gap-1"><span className="text-xs text-gray-400">R$</span><input type="number" step="0.01" value={dep.amount} onChange={(e) => updateDeposit(dep.id, 'amount', parseFloat(e.target.value))} className="w-20 text-right bg-transparent border-none p-0 focus:ring-0" /></div>
-                                 </td>
-                                 <td className="p-2 text-center align-top"><button onClick={() => deleteDeposit(dep.id)} className="text-gray-400 hover:text-red-500"><Trash2 className="w-3 h-3" /></button></td>
-                               </tr>
-                             ))}
-                             {currentMonthDeposits.length === 0 && <tr><td colSpan="3" className="p-4 text-center text-xs text-gray-400">Sem depósitos</td></tr>}
-                           </tbody>
-                           <tfoot className="bg-gray-50 font-bold text-gray-700"><tr><td className="p-2 text-right">TOTAL:</td><td className="p-2 text-right">{formatCurrency(totals.totalDepositos)}</td><td></td></tr></tfoot>
-                         </table>
-                      </div>
+                        <div className="flex gap-2">
+                            <button onClick={addService} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium shadow-sm"><Plus className="w-4 h-4" /> Novo Serviço</button>
+                            <button onClick={handleLogout} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 rounded-lg shadow-sm" title="Sair"><LogOut className="w-4 h-4" /></button>
+                        </div>
                     </div>
 
-                    {/* Tabela Principal (Direita) */}
-                    <div className="lg:col-span-3 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 order-1 lg:order-2">
-                      <div className="overflow-x-auto">
-                        <table className="w-full border-collapse min-w-[800px]">
-                          <thead>
-                            <tr>
-                              <th className={`border border-gray-400 p-2 w-16 text-center font-bold ${headerYellow}`}>{currentMonthServices.length} <br/> <span className="text-xs font-normal">DIAS</span></th>
-                              <th className={`border border-gray-400 p-2 text-center font-bold ${headerYellow}`}>SERVIÇOS <br/> <span className="text-xs font-normal">SEMANA</span></th>
-                              <th colSpan="6" className={`border border-gray-400 p-2 text-center font-bold ${headerBlue} text-lg uppercase`}>CONTROLE MENSAL - {user?.email?.split('@')[0] || user?.displayName || 'USUÁRIO'}</th>
-                            </tr>
-                            <tr className="text-xs md:text-sm uppercase bg-[#E2EFDA]">
-                              <th className="border border-gray-400 p-2 w-32">STATUS</th>
-                              <th className="border border-gray-400 p-2 w-32">DATA</th>
-                              <th className="border border-gray-400 p-2 w-28">DIA</th>
-                              <th className="border border-gray-400 p-2 w-32">VALOR (R$)</th>
-                              <th className="border border-gray-400 p-2 w-32">A PAGAR</th>
-                              <th className="border border-gray-400 p-2 w-32">PAGO</th>
-                              <th className="border border-gray-400 p-2 w-24">CONDIÇÃO</th>
-                              <th className="border border-gray-400 p-2 w-10"></th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {currentMonthServices.map((service) => {
-                              const toPay = (Number(service.value) || 0) - (Number(service.paidValue) || 0);
-                              const isOk = service.status === 'CONCLUÍDO';
-                              return (
-                                <tr key={service.id} className="hover:bg-gray-50 transition-colors text-sm font-medium">
-                                  <td className={`border border-gray-300 p-0`}>
-                                    <button onClick={() => updateService(service.id, 'status', service.status === 'CONCLUÍDO' ? 'PENDENTE' : 'CONCLUÍDO')} className={`w-full h-full p-2 text-white font-bold uppercase text-xs transition-colors ${service.status === 'CONCLUÍDO' ? cellCyan : 'bg-gray-400'}`}>{service.status || 'PENDENTE'}</button>
-                                  </td>
-                                  <td className="border border-gray-300 p-1"><input type="date" value={service.date} onChange={(e) => updateService(service.id, 'date', e.target.value)} className="w-full p-1 border-none focus:ring-1 focus:ring-blue-500 rounded bg-transparent text-center font-bold uppercase" /></td>
-                                  <td className="border border-gray-300 p-2 text-center uppercase text-gray-700 font-bold bg-gray-50">{getDayOfWeek(service.date)}</td>
-                                  <td className="border border-gray-300 p-1"><div className="flex items-center px-2"><span className="text-gray-500 mr-1">R$</span><input type="number" step="0.01" value={service.value} onChange={(e) => updateService(service.id, 'value', parseFloat(e.target.value))} className="w-full p-1 border-none focus:ring-1 focus:ring-blue-500 rounded font-bold text-gray-800" /></div></td>
-                                  <td className="border border-gray-300 p-2 text-center font-bold text-red-500 bg-gray-50">{toPay > 0 ? formatCurrency(toPay) : <span className="text-gray-400">R$ -</span>}</td>
-                                  <td className="border border-gray-300 p-1"><div className="flex items-center px-2"><span className="text-gray-500 mr-1">R$</span><input type="number" step="0.01" value={service.paidValue} onChange={(e) => updateService(service.id, 'paidValue', parseFloat(e.target.value))} className={`w-full p-1 border-none focus:ring-1 focus:ring-blue-500 rounded font-bold ${cellBlueText}`} /></div></td>
-                                  <td className={`border border-gray-300 p-0 text-center align-middle`}><div className={`h-full flex items-center justify-center font-bold text-xs p-2 ${isOk ? cellCyan + ' text-white' : 'bg-yellow-100 text-yellow-700'}`}>{isOk ? 'OK' : 'ABERTO'}</div></td>
-                                  <td className="border border-gray-300 p-0 text-center"><button onClick={() => deleteService(service.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 w-full h-full flex items-center justify-center transition-colors"><Trash2 className="w-4 h-4" /></button></td>
-                                </tr>
-                              );
-                            })}
-                            {currentMonthServices.length === 0 && <tr><td colSpan="8" className="p-8 text-center text-gray-400">Nenhum serviço registrado neste mês. Clique em "Novo Serviço" para começar.</td></tr>}
-                          </tbody>
-                        </table>
-                      </div>
+                    {/* Grid Principal */}
+                    <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
+                        
+                        {/* 1. Sidebar (ESQUERDA - Ordem ajustada) */}
+                        <div className="flex flex-col gap-6 order-2 lg:order-1">
+                            {/* Resumo Financeiro */}
+                            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                                <h3 className="text-sm font-bold text-gray-500 mb-3 uppercase tracking-wider border-b pb-2">Resumo Financeiro</h3>
+                                <div className="grid grid-cols-1 border border-gray-800 text-center font-bold text-sm">
+                                    <div className={`${sY} p-2 border-b border-gray-800`}>SERV. PROGRAMADOS</div>
+                                    <div className={`${sG} p-2 border-b border-gray-800 text-lg`}>{format(totals.prog)}</div>
+                                    <div className={`${sY} p-2 border-b border-gray-800`}>TOTAL PAGO</div>
+                                    <div className={`${sG} p-2 border-b border-gray-800 text-lg`}>{format(totals.paid)}</div>
+                                    <div className="grid grid-cols-2 border-b border-gray-800">
+                                        <div className={`${sY} p-2 border-r border-gray-800 flex items-center justify-center`}>CONCLUÍDOS</div>
+                                        <div className={`${sG} p-2 text-lg`}>{totals.done}</div>
+                                    </div>
+                                    <div className={`${sY} p-2 border-b border-gray-800`}>SERVIÇOS RESTANTES</div>
+                                    <div className={`${sG} p-2 border-b border-gray-800 text-lg`}>{totals.remaining}</div>
+                                    <div className={`${sY} p-2 border-b border-gray-800`}>SALDO</div>
+                                    <div className={`${sG} p-2 text-lg text-gray-800`}>{format(totals.saldo)}</div>
+                                </div>
+                            </div>
+
+                            {/* Tabela de Depósitos */}
+                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                                <div className="flex justify-between items-center p-3 bg-gray-50 border-b border-gray-200">
+                                    <h3 className="font-bold text-gray-700 text-sm uppercase">Depósitos</h3>
+                                    <button onClick={addDeposit} className="text-blue-600 hover:text-blue-800"><Plus className="w-4 h-4" /></button>
+                                </div>
+                                <table className="w-full text-sm">
+                                    <thead className="bg-yellow-100 text-yellow-800 font-bold"><tr><th className="p-2 text-left">Data / Desc</th><th className="p-2 text-right">Valor</th><th className="w-6"></th></tr></thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {currentDeposits.map(d => (
+                                            <tr key={d.id} className="hover:bg-gray-50">
+                                                <td className="p-2">
+                                                    <input type="text" value={d.description||''} onChange={e=>updDeposit(d.id,'description',e.target.value)} placeholder="Desc." className="w-full bg-transparent font-bold uppercase text-xs mb-1 outline-none" />
+                                                    <input type="date" value={d.date} onChange={e=>updDeposit(d.id,'date',e.target.value)} className="w-full bg-transparent text-gray-500 text-xs outline-none" />
+                                                </td>
+                                                <td className="p-2 text-right font-bold text-green-700 align-top">
+                                                    <div className="flex justify-end gap-1"><span className="text-xs text-gray-400">R$</span><input type="number" step="0.01" value={d.amount} onChange={e=>updDeposit(d.id,'amount',parseFloat(e.target.value))} className="w-16 text-right bg-transparent outline-none" /></div>
+                                                </td>
+                                                <td className="p-2 align-top"><button onClick={()=>delDeposit(d.id)} className="text-gray-400 hover:text-red-500"><Trash2 className="w-3 h-3" /></button></td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                    <tfoot className="bg-gray-50 font-bold text-gray-700 text-xs"><tr><td className="p-2 text-right">TOTAL:</td><td className="p-2 text-right">{format(totals.depTotal)}</td><td></td></tr></tfoot>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* 2. Tabela Principal (DIREITA - Ordem ajustada) */}
+                        <div className="lg:col-span-3 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 order-1 lg:order-2">
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse min-w-[800px]">
+                                    <thead>
+                                        <tr>
+                                            <th className={`border border-gray-400 p-2 w-16 text-center font-bold ${hY}`}>{currentServices.length} <br/> <span className="text-xs font-normal">DIAS</span></th>
+                                            <th className={`border border-gray-400 p-2 text-center font-bold ${hY}`}>SERVIÇOS <br/> <span className="text-xs font-normal">SEMANA</span></th>
+                                            <th colSpan="6" className={`border border-gray-400 p-2 text-center font-bold ${hB} text-lg uppercase`}>CONTROLE MENSAL - {user?.email?.split('@')[0]}</th>
+                                        </tr>
+                                        <tr className="text-xs md:text-sm uppercase bg-[#E2EFDA]">
+                                            <th className="border border-gray-400 p-2 w-32">STATUS</th>
+                                            <th className="border border-gray-400 p-2 w-32">DATA</th>
+                                            <th className="border border-gray-400 p-2 w-28">DIA</th>
+                                            <th className="border border-gray-400 p-2 w-32">VALOR (R$)</th>
+                                            <th className="border border-gray-400 p-2 w-32">A PAGAR</th>
+                                            <th className="border border-gray-400 p-2 w-32">PAGO</th>
+                                            <th className="border border-gray-400 p-2 w-24">CONDIÇÃO</th>
+                                            <th className="border border-gray-400 p-2 w-10"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {currentServices.map(s => {
+                                            const toPay = (Number(s.value)||0) - (Number(s.paidValue)||0);
+                                            const isOk = s.status === 'CONCLUÍDO'; // Lógica: OK se Concluído
+                                            return (
+                                                <tr key={s.id} className="hover:bg-gray-50 text-sm font-medium">
+                                                    <td className="border border-gray-300 p-0">
+                                                        <button onClick={()=>updService(s.id,'status',s.status==='CONCLUÍDO'?'PENDENTE':'CONCLUÍDO')} className={`w-full h-full p-2 text-white font-bold uppercase text-xs ${s.status==='CONCLUÍDO'?cC:'bg-gray-400'}`}>{s.status||'PENDENTE'}</button>
+                                                    </td>
+                                                    <td className="border border-gray-300 p-1"><input type="date" value={s.date} onChange={e=>updService(s.id,'date',e.target.value)} className="w-full text-center font-bold uppercase bg-transparent outline-none" /></td>
+                                                    <td className="border border-gray-300 p-2 text-center uppercase text-gray-700 font-bold bg-gray-50">{getDay(s.date)}</td>
+                                                    <td className="border border-gray-300 p-1"><div className="flex px-2"><span className="text-gray-500 mr-1">R$</span><input type="number" step="0.01" value={s.value} onChange={e=>updService(s.id,'value',parseFloat(e.target.value))} className="w-full font-bold text-gray-800 outline-none" /></div></td>
+                                                    <td className="border border-gray-300 p-2 text-center font-bold text-red-500 bg-gray-50">{toPay>0?format(toPay):<span className="text-gray-400">R$ -</span>}</td>
+                                                    <td className="border border-gray-300 p-1"><div className="flex px-2"><span className="text-gray-500 mr-1">R$</span><input type="number" step="0.01" value={s.paidValue} onChange={e=>updService(s.id,'paidValue',parseFloat(e.target.value))} className={`w-full font-bold ${cB} outline-none`} /></div></td>
+                                                    <td className="border border-gray-300 p-0 align-middle"><div className={`h-full flex items-center justify-center font-bold text-xs p-2 ${isOk ? cC+' text-white' : 'bg-yellow-100 text-yellow-700'}`}>{isOk ? 'OK' : 'ABERTO'}</div></td>
+                                                    <td className="border border-gray-300 p-0 text-center"><button onClick={()=>delService(s.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 w-full h-full flex items-center justify-center"><Trash2 className="w-4 h-4" /></button></td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {currentServices.length===0 && <tr><td colSpan="8" className="p-8 text-center text-gray-400">Nenhum serviço neste mês.</td></tr>}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
-                  </div>
-                  <div className="max-w-7xl mx-auto mt-6 text-center text-xs text-gray-400 pb-8">Todas as alterações são salvas automaticamente.</div>
+                    <div className="text-center text-xs text-gray-400 mt-8 pb-4">Dados salvos automaticamente no Firebase.</div>
                 </div>
             );
         }
