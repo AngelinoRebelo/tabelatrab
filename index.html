@@ -23,47 +23,60 @@
         input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
 
-        /* === ESTILOS DE IMPRESSÃO (RELATÓRIO MELHORADO) === */
+        /* === ESTILOS DE IMPRESSÃO (OTIMIZADO PARA UMA PÁGINA) === */
         @media print {
-            body { background-color: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .no-print { display: none !important; } /* Esconde botões */
+            /* Configura a página para Paisagem (Deitada) para caber lado a lado */
+            @page { size: landscape; margin: 5mm; }
+            
+            body { 
+                background-color: white; 
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact;
+                zoom: 85%; /* Compacta o conteúdo para caber na folha */
+            }
+
+            .no-print { display: none !important; } 
             .shadow-sm, .shadow-lg, .border { box-shadow: none !important; border-color: #000 !important; }
             .bg-gray-100 { background-color: white !important; }
             .text-white { color: black !important; }
             
-            /* Layout Flexível na Impressão para reordenar */
-            .max-w-7xl { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
-            
-            /* Transforma o Grid em Flex Coluna para respeitar 'order-1' e 'order-2' */
-            .grid { 
-                display: flex !important; 
-                flex-direction: column !important; 
-                gap: 20px !important;
+            /* Layout Lado a Lado (Grid) */
+            .max-w-7xl { 
+                max-width: 100% !important; 
+                margin: 0 !important; 
+                padding: 0 !important; 
             }
             
-            /* Tabela de Serviços (order-1) vai para o topo */
-            /* Sidebar (order-2) vai para baixo */
+            /* Restaura o Grid para 2 colunas (Resumo | Tabela) */
+            .grid { 
+                display: grid !important; 
+                grid-template-columns: 300px 1fr !important; /* Resumo fixo, Tabela flexível */
+                gap: 15px !important;
+                align-items: start !important;
+            }
             
-            /* Garante largura total */
-            .lg\:col-span-3, .flex-col { width: 100% !important; }
+            /* Força a ordem visual (Resumo na Esquerda, Tabela na Direita) */
+            .order-1 { order: 2 !important; } /* Tabela na direita */
+            .order-2 { order: 1 !important; } /* Resumo na esquerda */
             
-            /* Estilos da Tabela */
-            table { width: 100% !important; font-size: 11pt !important; border-collapse: collapse !important; }
-            th, td { padding: 6px !important; border: 1px solid #333 !important; }
+            /* Tabela Compacta */
+            table { width: 100% !important; font-size: 10pt !important; border-collapse: collapse !important; }
+            th, td { padding: 4px !important; border: 1px solid #444 !important; height: auto !important; }
             
-            /* Inputs mais limpos na impressão */
-            input { font-weight: bold !important; color: #000 !important; background: transparent !important; }
+            /* Inputs limpos */
+            input { font-weight: bold !important; color: #000 !important; background: transparent !important; border: none !important; padding: 0 !important; margin: 0 !important; }
             input[type="date"]::-webkit-calendar-picker-indicator { display: none; }
 
-            /* Força cores de fundo */
+            /* Cores Vibrantes na Impressão */
             .bg-\[\#FFE699\] { background-color: #FFE699 !important; }
             .bg-\[\#D9E1F2\] { background-color: #D9E1F2 !important; }
             .bg-\[\#00B0F0\] { background-color: #00B0F0 !important; color: black !important; font-weight: bold; }
             .bg-\[\#FFFF00\] { background-color: #FFFF00 !important; }
             .bg-\[\#D9D9D9\] { background-color: #D9D9D9 !important; }
             
-            /* Evita quebrar o Resumo Financeiro no meio */
-            .print-break-inside-avoid { page-break-inside: avoid; break-inside: avoid; margin-top: 20px; }
+            /* Remove barras de rolagem */
+            .overflow-hidden { overflow: visible !important; }
+            .overflow-x-auto { overflow: visible !important; }
         }
     </style>
 </head>
@@ -402,13 +415,13 @@
                             <button onClick={handleLogout} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 rounded-lg shadow-sm" title="Sair"><LogOut className="w-4 h-4" /></button>
                         </div>
                         {/* Data visível apenas no relatório impresso */}
-                        <div className="hidden print:block text-lg font-bold uppercase text-center mb-4">{selectedDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</div>
+                        <div className="hidden print:block text-2xl font-bold uppercase text-center mb-6">{selectedDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</div>
                     </div>
 
                     {/* Grid Principal */}
                     <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
                         
-                        {/* 1. Sidebar (ESQUERDA) */}
+                        {/* 1. Sidebar (ESQUERDA na tela, ESQUERDA na impressão) */}
                         <div className="flex flex-col gap-6 order-2 lg:order-1">
                             {/* Resumo Financeiro */}
                             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 print-break-inside-avoid">
@@ -449,7 +462,7 @@
                             </div>
                         </div>
 
-                        {/* 2. Tabela Principal (DIREITA) */}
+                        {/* 2. Tabela Principal (DIREITA na tela, DIREITA na impressão) */}
                         <div className="lg:col-span-3 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 order-1 lg:order-2">
                             <div className="overflow-x-auto">
                                 <table className="w-full border-collapse min-w-[800px]">
