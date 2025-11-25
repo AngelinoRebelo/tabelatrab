@@ -359,8 +359,109 @@ export default function ServiceRegistryApp() {
 
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
         
-        {/* Main Table Section */}
-        <div className="lg:col-span-3 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300">
+        {/* Sidebar Summary Section (Moved to Left) */}
+        <div className="flex flex-col gap-6 order-2 lg:order-1">
+          
+          {/* Totals Cards */}
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <h3 className="text-sm font-bold text-gray-500 mb-3 uppercase tracking-wider border-b pb-2">Resumo Financeiro</h3>
+            
+            <div className="grid grid-cols-1 gap-0 border border-gray-800 text-center font-bold text-sm">
+              <div className={`${summaryYellow} p-2 border-b border-gray-800`}>SERV. PROGRAMADOS</div>
+              <div className={`${summaryGrey} p-2 border-b border-gray-800 text-lg`}>{formatCurrency(totals.totalProgramado)}</div>
+              
+              <div className={`${summaryYellow} p-2 border-b border-gray-800`}>TOTAL PAGO</div>
+              <div className={`${summaryGrey} p-2 border-b border-gray-800 text-lg`}>{formatCurrency(totals.totalPago)}</div>
+
+              <div className="grid grid-cols-2 border-b border-gray-800">
+                <div className={`${summaryYellow} p-2 border-r border-gray-800 flex flex-col justify-center`}>
+                  <span>CONCLUÍDOS</span>
+                </div>
+                <div className={`${summaryGrey} p-2 flex items-center justify-center text-lg`}>
+                  {totals.servicosConcluidos}
+                </div>
+              </div>
+
+               <div className={`${summaryYellow} p-2 border-b border-gray-800`}>SERVIÇOS RESTANTES</div>
+               <div className={`${summaryGrey} p-2 border-b border-gray-800 text-lg`}>{totals.servicosRestantes}</div>
+
+               <div className={`${summaryYellow} p-2 border-b border-gray-800`}>SALDO</div>
+               <div className={`${summaryGrey} p-2 text-lg text-gray-800`}>{formatCurrency(totals.saldo)}</div>
+            </div>
+          </div>
+
+          {/* Deposits Table */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+             <div className="flex justify-between items-center p-3 bg-gray-50 border-b border-gray-200">
+                <h3 className="font-bold text-gray-700 text-sm uppercase">Depósitos / Entradas</h3>
+                <button onClick={addDeposit} className="text-blue-600 hover:text-blue-800">
+                  <Plus className="w-5 h-5" />
+                </button>
+             </div>
+             
+             <table className="w-full text-sm">
+               <thead className="bg-yellow-100 text-yellow-800 font-bold">
+                 <tr>
+                    <th className="p-2 text-left">Descrição / Data</th>
+                    <th className="p-2 text-right">Valor</th>
+                    <th className="w-8"></th>
+                 </tr>
+               </thead>
+               <tbody className="divide-y divide-gray-100">
+                 {currentMonthDeposits.map(dep => (
+                   <tr key={dep.id} className="hover:bg-gray-50">
+                     <td className="p-2">
+                        <input 
+                          type="text"
+                          value={dep.description || ''}
+                          onChange={(e) => updateDeposit(dep.id, 'description', e.target.value)}
+                          placeholder="Descrição"
+                          className="w-full bg-transparent border-none p-0 text-xs focus:ring-0 font-bold text-gray-700 uppercase mb-1"
+                        />
+                        <input 
+                          type="date"
+                          value={dep.date}
+                          onChange={(e) => updateDeposit(dep.id, 'date', e.target.value)}
+                          className="w-full bg-transparent border-none p-0 text-xs focus:ring-0 text-gray-400"
+                        />
+                     </td>
+                     <td className="p-2 text-right font-bold text-green-700 align-top">
+                        <div className="flex justify-end items-center gap-1">
+                          <span className="text-xs text-gray-400">R$</span>
+                          <input 
+                            type="number"
+                            step="0.01"
+                            value={dep.amount}
+                            onChange={(e) => updateDeposit(dep.id, 'amount', parseFloat(e.target.value))}
+                            className="w-20 text-right bg-transparent border-none p-0 focus:ring-0"
+                          />
+                        </div>
+                     </td>
+                     <td className="p-2 text-center align-top">
+                        <button onClick={() => deleteDeposit(dep.id)} className="text-gray-400 hover:text-red-500">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                     </td>
+                   </tr>
+                 ))}
+                 {currentMonthDeposits.length === 0 && (
+                   <tr><td colSpan="3" className="p-4 text-center text-xs text-gray-400">Sem depósitos</td></tr>
+                 )}
+               </tbody>
+               <tfoot className="bg-gray-50 font-bold text-gray-700">
+                  <tr>
+                    <td className="p-2 text-right">TOTAL:</td>
+                    <td className="p-2 text-right">{formatCurrency(totals.totalDepositos)}</td>
+                    <td></td>
+                  </tr>
+               </tfoot>
+             </table>
+          </div>
+
+        </div>
+
+        {/* Main Table Section (Moved to Right) */}
+        <div className="lg:col-span-3 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 order-1 lg:order-2">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse min-w-[800px]">
               <thead>
@@ -485,106 +586,6 @@ export default function ServiceRegistryApp() {
           </div>
         </div>
 
-        {/* Sidebar Summary Section */}
-        <div className="flex flex-col gap-6">
-          
-          {/* Totals Cards */}
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-sm font-bold text-gray-500 mb-3 uppercase tracking-wider border-b pb-2">Resumo Financeiro</h3>
-            
-            <div className="grid grid-cols-1 gap-0 border border-gray-800 text-center font-bold text-sm">
-              <div className={`${summaryYellow} p-2 border-b border-gray-800`}>SERV. PROGRAMADOS</div>
-              <div className={`${summaryGrey} p-2 border-b border-gray-800 text-lg`}>{formatCurrency(totals.totalProgramado)}</div>
-              
-              <div className={`${summaryYellow} p-2 border-b border-gray-800`}>TOTAL PAGO</div>
-              <div className={`${summaryGrey} p-2 border-b border-gray-800 text-lg`}>{formatCurrency(totals.totalPago)}</div>
-
-              <div className="grid grid-cols-2 border-b border-gray-800">
-                <div className={`${summaryYellow} p-2 border-r border-gray-800 flex flex-col justify-center`}>
-                  <span>CONCLUÍDOS</span>
-                </div>
-                <div className={`${summaryGrey} p-2 flex items-center justify-center text-lg`}>
-                  {totals.servicosConcluidos}
-                </div>
-              </div>
-
-               <div className={`${summaryYellow} p-2 border-b border-gray-800`}>SERVIÇOS RESTANTES</div>
-               <div className={`${summaryGrey} p-2 border-b border-gray-800 text-lg`}>{totals.servicosRestantes}</div>
-
-               <div className={`${summaryYellow} p-2 border-b border-gray-800`}>SALDO</div>
-               <div className={`${summaryGrey} p-2 text-lg text-gray-800`}>{formatCurrency(totals.saldo)}</div>
-            </div>
-          </div>
-
-          {/* Deposits Table */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-             <div className="flex justify-between items-center p-3 bg-gray-50 border-b border-gray-200">
-                <h3 className="font-bold text-gray-700 text-sm uppercase">Depósitos / Entradas</h3>
-                <button onClick={addDeposit} className="text-blue-600 hover:text-blue-800">
-                  <Plus className="w-5 h-5" />
-                </button>
-             </div>
-             
-             <table className="w-full text-sm">
-               <thead className="bg-yellow-100 text-yellow-800 font-bold">
-                 <tr>
-                    <th className="p-2 text-left">Descrição / Data</th>
-                    <th className="p-2 text-right">Valor</th>
-                    <th className="w-8"></th>
-                 </tr>
-               </thead>
-               <tbody className="divide-y divide-gray-100">
-                 {currentMonthDeposits.map(dep => (
-                   <tr key={dep.id} className="hover:bg-gray-50">
-                     <td className="p-2">
-                        <input 
-                          type="text"
-                          value={dep.description || ''}
-                          onChange={(e) => updateDeposit(dep.id, 'description', e.target.value)}
-                          placeholder="Descrição"
-                          className="w-full bg-transparent border-none p-0 text-xs focus:ring-0 font-bold text-gray-700 uppercase mb-1"
-                        />
-                        <input 
-                          type="date"
-                          value={dep.date}
-                          onChange={(e) => updateDeposit(dep.id, 'date', e.target.value)}
-                          className="w-full bg-transparent border-none p-0 text-xs focus:ring-0 text-gray-400"
-                        />
-                     </td>
-                     <td className="p-2 text-right font-bold text-green-700 align-top">
-                        <div className="flex justify-end items-center gap-1">
-                          <span className="text-xs text-gray-400">R$</span>
-                          <input 
-                            type="number"
-                            step="0.01"
-                            value={dep.amount}
-                            onChange={(e) => updateDeposit(dep.id, 'amount', parseFloat(e.target.value))}
-                            className="w-20 text-right bg-transparent border-none p-0 focus:ring-0"
-                          />
-                        </div>
-                     </td>
-                     <td className="p-2 text-center align-top">
-                        <button onClick={() => deleteDeposit(dep.id)} className="text-gray-400 hover:text-red-500">
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                     </td>
-                   </tr>
-                 ))}
-                 {currentMonthDeposits.length === 0 && (
-                   <tr><td colSpan="3" className="p-4 text-center text-xs text-gray-400">Sem depósitos</td></tr>
-                 )}
-               </tbody>
-               <tfoot className="bg-gray-50 font-bold text-gray-700">
-                  <tr>
-                    <td className="p-2 text-right">TOTAL:</td>
-                    <td className="p-2 text-right">{formatCurrency(totals.totalDepositos)}</td>
-                    <td></td>
-                  </tr>
-               </tfoot>
-             </table>
-          </div>
-
-        </div>
       </div>
       
       <div className="max-w-7xl mx-auto mt-6 text-center text-xs text-gray-400 pb-8">
