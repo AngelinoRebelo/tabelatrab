@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relatório de Serviços - Victorino</title>
+    <title>Relatório de Serviços - Multi-Tabelas</title>
     
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -23,7 +23,11 @@
         input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
 
-        /* === ESTILOS DE IMPRESSÃO (OTIMIZADO PARA UMA PÁGINA) === */
+        /* Barra de rolagem customizada para as abas */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* === ESTILOS DE IMPRESSÃO === */
         @media print {
             @page { size: landscape; margin: 5mm; }
             
@@ -41,7 +45,7 @@
             
             .max-w-7xl { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
             
-            /* Grid Principal (Página) */
+            /* Grid Principal */
             .grid.lg\:grid-cols-4 { 
                 display: grid !important; 
                 grid-template-columns: 320px 1fr !important; 
@@ -49,14 +53,12 @@
                 align-items: start !important;
             }
             
-            /* Grid do Resumo Financeiro */
             .grid.grid-cols-2 {
                 display: grid !important;
                 grid-template-columns: 1fr 1fr !important;
                 width: 100% !important;
             }
             
-            /* Reordenação visual */
             .order-1 { order: 2 !important; } 
             .order-2 { order: 1 !important; } 
             
@@ -83,16 +85,12 @@
 
     <!-- Script Principal da Aplicação -->
     <script type="text/babel" data-type="module">
-        // Importações do React globais
         const { useState, useEffect, useMemo } = React;
 
         // --- Ícones SVG ---
         const Icon = ({ children, className }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                {children}
-            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>
         );
-
         const CalendarIcon = ({ className }) => <Icon className={className}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></Icon>;
         const ChevronLeft = ({ className }) => <Icon className={className}><polyline points="15 18 9 12 15 6"/></Icon>;
         const ChevronRight = ({ className }) => <Icon className={className}><polyline points="9 18 15 12 9 6"/></Icon>;
@@ -102,19 +100,16 @@
         const Lock = ({ className }) => <Icon className={className}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></Icon>;
         const ShieldAlert = ({ className }) => <Icon className={className}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></Icon>;
         const Printer = ({ className }) => <Icon className={className}><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></Icon>;
+        const Edit2 = ({ className }) => <Icon className={className}><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></Icon>;
 
-        // --- Módulos do Firebase via CDN (Versão Compatível) ---
+        // --- Firebase ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { 
             getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, 
-            onSnapshot, query, where, getDocs, writeBatch, serverTimestamp 
+            onSnapshot, query, where, getDocs, writeBatch, serverTimestamp, orderBy
         } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // =================================================================================
-        // SUAS CHAVES DO FIREBASE
-        // =================================================================================
-        
         const firebaseConfig = {
             apiKey: "AIzaSyAAbRqZjFI8XgPcSihtLL8OMr5snNp3ts4",
             authDomain: "serviextra-ecdc7.firebaseapp.com",
@@ -123,22 +118,17 @@
             messagingSenderId: "892522606172",
             appId: "1:892522606172:web:e5393e632559ae7d404099"
         };
-        
-        // =================================================================================
 
-        // Inicialização
         let app, auth, db;
         try {
             app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
-        } catch (e) {
-            console.error("Erro ao inicializar Firebase", e);
-        }
+        } catch (e) { console.error("Erro Firebase", e); }
 
         const APP_ID = 'meu-registro-servicos'; 
 
-        // --- TELA DE LOGIN ---
+        // --- Componente Login ---
         function LoginScreen() {
             const [email, setEmail] = useState('');
             const [password, setPassword] = useState('');
@@ -147,18 +137,12 @@
 
             const handleSubmit = async (e) => {
                 e.preventDefault();
-                setError('');
-                setLoggingIn(true);
-                try {
-                    await signInWithEmailAndPassword(auth, email, password);
-                } catch (err) {
-                    console.error("Erro login:", err);
+                setError(''); setLoggingIn(true);
+                try { await signInWithEmailAndPassword(auth, email, password); } 
+                catch (err) { 
                     let msg = "Erro ao fazer login.";
-                    if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') msg = "E-mail ou senha incorretos.";
-                    else if (err.code === 'auth/too-many-requests') msg = "Muitas tentativas. Aguarde um instante.";
-                    else if (err.code === 'auth/user-not-found') msg = "Usuário não encontrado.";
-                    setError(msg);
-                    setLoggingIn(false);
+                    if (err.code === 'auth/invalid-credential') msg = "Credenciais inválidas.";
+                    setError(msg); setLoggingIn(false); 
                 }
             };
 
@@ -166,130 +150,172 @@
                 <div className="min-h-screen flex items-center justify-center bg-gray-200 p-4">
                     <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-sm border border-gray-100">
                         <div className="text-center mb-6">
-                            <div className="bg-blue-100 w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3">
-                                <Lock className="w-6 h-6 text-blue-600" />
-                            </div>
+                            <div className="bg-blue-100 w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3"><Lock className="w-6 h-6 text-blue-600" /></div>
                             <h2 className="text-xl font-bold text-gray-800">Controle de Serviços</h2>
-                            <p className="text-gray-500 text-sm mt-1">Acesso Restrito</p>
+                            <p className="text-gray-500 text-sm">Acesso Restrito</p>
                         </div>
-                        
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            {error && <div className="bg-red-50 text-red-600 p-3 rounded text-xs text-center border border-red-100">{error}</div>}
-                            <div>
-                                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">E-mail</label>
-                                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-2 border border-gray-300 rounded focus:border-blue-500 outline-none" placeholder="seu@email.com" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Senha</label>
-                                <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-2 border border-gray-300 rounded focus:border-blue-500 outline-none" placeholder="******" />
-                            </div>
-                            <button type="submit" disabled={loggingIn} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded transition-colors disabled:opacity-70">
-                                {loggingIn ? 'Entrando...' : 'Entrar'}
-                            </button>
+                            {error && <div className="bg-red-50 text-red-600 p-3 rounded text-xs text-center">{error}</div>}
+                            <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full p-2 border rounded outline-none" placeholder="E-mail" />
+                            <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full p-2 border rounded outline-none" placeholder="Senha" />
+                            <button type="submit" disabled={loggingIn} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded disabled:opacity-70">{loggingIn ? 'Entrando...' : 'Entrar'}</button>
                         </form>
                     </div>
                 </div>
             );
         }
 
-        // --- APLICAÇÃO PRINCIPAL ---
+        // --- App Principal ---
         function ServiceRegistryApp() {
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(true);
             const [permissionError, setPermissionError] = useState(false);
+            const [selectedDate, setSelectedDate] = useState(new Date());
             
-            const [selectedDate, setSelectedDate] = useState(new Date()); 
+            // --- ABAS / TABELAS ---
+            const [tables, setTables] = useState([]);
+            const [activeTabId, setActiveTabId] = useState(null);
+            const [editingTabId, setEditingTabId] = useState(null); // ID da aba sendo editada
+            const [tempTabName, setTempTabName] = useState(""); // Nome temporário na edição
 
             // Dados
             const [services, setServices] = useState([]);
             const [deposits, setDeposits] = useState([]);
 
-            // Autenticação
+            // Auth Listener
             useEffect(() => {
-                const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-                    setUser(currentUser);
-                    setLoading(false);
-                });
-                return () => unsubscribe();
+                return onAuthStateChanged(auth, (u) => { setUser(u); setLoading(false); });
             }, []);
 
-            // Preenchimento Automático Inicial (Demo)
+            // Carregar Tabelas (Tabs)
             useEffect(() => {
-                if (!user || !db || permissionError) return;
-                const populate = async () => {
-                    const batch = writeBatch(db);
-                    let hasUpdates = false;
-
-                    // SETEMBRO 2025 (Demo)
-                    const sRef = collection(db, 'apps', APP_ID, 'users', user.uid, 'services');
-                    const qSet = query(sRef, where('date', '==', '2025-09-22'));
-                    const snapSet = await getDocs(qSet);
-
-                    if (snapSet.empty) {
-                        hasUpdates = true;
-                        const dRef = collection(db, 'apps', APP_ID, 'users', user.uid, 'deposits');
-                        const newDeposit = doc(dRef);
-                        batch.set(newDeposit, { date: '2025-09-01', amount: 3622.97, description: 'SALDO MÊS DE AGOSTO', type: 'manual_initial', createdAt: serverTimestamp() });
-
-                        const servicesSet = [
-                            { date: '2025-09-22', value: 200, paidValue: 200, status: 'CONCLUÍDO' },
-                            { date: '2025-09-26', value: 200, paidValue: 200, status: 'CONCLUÍDO' },
-                        ];
-                        servicesSet.forEach(d => {
-                            const newService = doc(sRef);
-                            batch.set(newService, { ...d, description: 'Serviço', createdAt: serverTimestamp() });
+                if(!user || !db) return;
+                const q = query(collection(db, 'apps', APP_ID, 'users', user.uid, 'tables'), orderBy('createdAt'));
+                return onSnapshot(q, (snap) => {
+                    const loadedTables = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                    if (loadedTables.length === 0) {
+                        // Cria tabela padrão se não existir nenhuma
+                        addDoc(collection(db, 'apps', APP_ID, 'users', user.uid, 'tables'), {
+                            name: 'VICTORINO',
+                            createdAt: serverTimestamp()
                         });
+                    } else {
+                        setTables(loadedTables);
+                        // Se não tiver aba ativa, seleciona a primeira
+                        if (!activeTabId) setActiveTabId(loadedTables[0].id);
                     }
+                }, (err) => { if(err.code === 'permission-denied') setPermissionError(true); });
+            }, [user, activeTabId]);
 
-                    // OUTUBRO 2025 (Demo)
-                    const qOut = query(sRef, where('date', '==', '2025-10-04'));
-                    const snapOut = await getDocs(qOut);
+            // Nome da aba ativa para exibição
+            const activeTabName = useMemo(() => {
+                const t = tables.find(t => t.id === activeTabId);
+                return t ? t.name : 'CARREGANDO...';
+            }, [tables, activeTabId]);
 
-                    if (snapOut.empty) {
-                        hasUpdates = true;
-                        const servicesOut = [
-                            { date: '2025-10-04', value: 200, paidValue: 200, status: 'CONCLUÍDO' },
-                            { date: '2025-10-06', value: 200, paidValue: 200, status: 'CONCLUÍDO' },
-                            { date: '2025-10-08', value: 200, paidValue: 200, status: 'CONCLUÍDO' },
-                            { date: '2025-10-14', value: 200, paidValue: 200, status: 'CONCLUÍDO' },
-                        ];
-                        servicesOut.forEach(d => {
-                            const newService = doc(sRef);
-                            batch.set(newService, { ...d, description: 'Serviço', createdAt: serverTimestamp() });
-                        });
-                    }
-
-                    if (hasUpdates) {
-                        try { await batch.commit(); } 
-                        catch(e) { if(e.code === 'permission-denied') setPermissionError(true); }
-                    }
-                };
-                populate();
-            }, [user, permissionError]);
-
-            // Listeners em Tempo Real
+            // Carregar Serviços e Depósitos (Global - filtra no render)
             useEffect(() => {
-                if (!user || !db) return;
+                if(!user || !db) return;
                 const qS = query(collection(db, 'apps', APP_ID, 'users', user.uid, 'services'));
-                const unsubS = onSnapshot(qS, (snap) => setServices(snap.docs.map(d => ({id: d.id, ...d.data()}))), (e) => {if(e.code==='permission-denied')setPermissionError(true)});
+                const unsubS = onSnapshot(qS, s => setServices(s.docs.map(d => ({id: d.id, ...d.data()}))));
+                
                 const qD = query(collection(db, 'apps', APP_ID, 'users', user.uid, 'deposits'));
-                const unsubD = onSnapshot(qD, (snap) => setDeposits(snap.docs.map(d => ({id: d.id, ...d.data()}))), (e) => {if(e.code==='permission-denied')setPermissionError(true)});
+                const unsubD = onSnapshot(qD, d => setDeposits(d.docs.map(d => ({id: d.id, ...d.data()}))));
+                
                 return () => { unsubS(); unsubD(); };
             }, [user]);
 
-            // === LÓGICA DE SALDO MÊS ANTERIOR (Automático) ===
-            useEffect(() => {
-                if (!user || loading || services.length === 0) return;
+            // --- Lógica de Filtragem por Aba ---
+            // Filtra serviços/depósitos pela TABELA ATIVA (activeTabId)
+            // Se o registro não tem 'tableId', assume que é da primeira tabela (legado)
+            const currentServices = useMemo(() => {
+                if (!activeTabId) return [];
+                const firstTableId = tables.length > 0 ? tables[0].id : null;
+                
+                return services.filter(s => {
+                    // Lógica de migração: se não tem tableId, pertence à primeira tabela criada
+                    const itemTableId = s.tableId || firstTableId;
+                    if (itemTableId !== activeTabId) return false;
 
-                const checkAndCreateBalance = async () => {
+                    if(!s.date) return false;
+                    const d = new Date(s.date + 'T12:00:00');
+                    return d.getMonth() === selectedDate.getMonth() && d.getFullYear() === selectedDate.getFullYear();
+                }).sort((a,b) => new Date(a.date) - new Date(b.date));
+            }, [services, selectedDate, activeTabId, tables]);
+
+            const currentDeposits = useMemo(() => {
+                if (!activeTabId) return [];
+                const firstTableId = tables.length > 0 ? tables[0].id : null;
+
+                return deposits.filter(d => {
+                    const itemTableId = d.tableId || firstTableId;
+                    if (itemTableId !== activeTabId) return false;
+
+                    if(!d.date) return false;
+                    const date = new Date(d.date + 'T12:00:00');
+                    return date.getMonth() === selectedDate.getMonth() && date.getFullYear() === selectedDate.getFullYear();
+                });
+            }, [deposits, selectedDate, activeTabId, tables]);
+
+            // Totais
+            const totals = useMemo(() => {
+                const prog = currentServices.reduce((acc, c) => acc + (Number(c.value)||0), 0);
+                const paid = currentServices.reduce((acc, c) => acc + (Number(c.paidValue)||0), 0);
+                const done = currentServices.filter(s => s.status === 'CONCLUÍDO').length;
+                const remaining = currentServices.length - done;
+                const depTotal = currentDeposits.reduce((acc, c) => acc + (Number(c.amount)||0), 0);
+                const saldo = depTotal - prog; 
+                const debt = saldo < 0 ? Math.abs(saldo) : 0;
+                return { prog, paid, done, remaining, depTotal, saldo, debt };
+            }, [currentServices, currentDeposits]);
+
+            // --- Gerenciamento de Abas ---
+            const createNewTab = async () => {
+                const name = prompt("Nome da nova tabela (ex: MACHADO):");
+                if (name && name.trim()) {
+                    try {
+                        const docRef = await addDoc(collection(db, 'apps', APP_ID, 'users', user.uid, 'tables'), {
+                            name: name.trim().toUpperCase(),
+                            createdAt: serverTimestamp()
+                        });
+                        setActiveTabId(docRef.id); // Muda para a nova aba
+                    } catch(e) { alert("Erro ao criar tabela."); }
+                }
+            };
+
+            const startEditingTab = (tab) => {
+                setEditingTabId(tab.id);
+                setTempTabName(tab.name);
+            };
+
+            const saveTabName = async () => {
+                if (tempTabName && tempTabName.trim()) {
+                    await updateDoc(doc(db, 'apps', APP_ID, 'users', user.uid, 'tables', editingTabId), {
+                        name: tempTabName.trim().toUpperCase()
+                    });
+                }
+                setEditingTabId(null);
+            };
+
+            // --- Saldo Automático ---
+            useEffect(() => {
+                if (!user || loading || !activeTabId || tables.length === 0) return;
+                
+                const checkBalance = async () => {
                     const prevDate = new Date(selectedDate);
                     prevDate.setMonth(selectedDate.getMonth() - 1);
-                    
+                    const firstTableId = tables[0].id;
+
+                    // Filtra dados do Mês Anterior APENAS da tabela ativa
                     const pServices = services.filter(s => {
+                        const tid = s.tableId || firstTableId;
+                        if (tid !== activeTabId) return false;
                         const d = new Date(s.date + 'T12:00:00');
                         return d.getMonth() === prevDate.getMonth() && d.getFullYear() === prevDate.getFullYear();
                     });
                     const pDeposits = deposits.filter(d => {
+                        const tid = d.tableId || firstTableId;
+                        if (tid !== activeTabId) return false;
                         const dDate = new Date(d.date + 'T12:00:00');
                         return dDate.getMonth() === prevDate.getMonth() && dDate.getFullYear() === prevDate.getFullYear();
                     });
@@ -298,19 +324,13 @@
 
                     const pPaid = pServices.reduce((acc, c) => acc + (Number(c.paidValue)||0), 0);
                     const pDepTotal = pDeposits.reduce((acc, c) => acc + (Number(c.amount)||0), 0);
-                    
-                    const rawBalance = pDepTotal - pPaid;
-                    const prevBalance = Math.round(rawBalance * 100) / 100;
+                    const prevBalance = Math.round((pDepTotal - pPaid) * 100) / 100;
 
                     const prevMonthName = prevDate.toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase();
                     const expectedDesc = `SALDO MÊS DE ${prevMonthName}`;
                     
-                    const cDeposits = deposits.filter(d => {
-                        const dDate = new Date(d.date + 'T12:00:00');
-                        return dDate.getMonth() === selectedDate.getMonth() && dDate.getFullYear() === selectedDate.getFullYear();
-                    });
-
-                    const existingEntry = cDeposits.find(d => d.description === expectedDesc || d.type === 'balance_carryover');
+                    // Procura no mês atual desta tabela
+                    const existingEntry = currentDeposits.find(d => d.description === expectedDesc || d.type === 'balance_carryover');
 
                     try {
                         if (existingEntry) {
@@ -322,86 +342,101 @@
                         } else {
                             const newDateStr = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1, 12).toISOString().split('T')[0];
                             await addDoc(collection(db, 'apps', APP_ID, 'users', user.uid, 'deposits'), {
-                                date: newDateStr, amount: prevBalance, description: expectedDesc, type: 'balance_carryover', createdAt: serverTimestamp()
+                                date: newDateStr, 
+                                amount: prevBalance, 
+                                description: expectedDesc, 
+                                type: 'balance_carryover', 
+                                tableId: activeTabId, // Importante: associa à tabela atual
+                                createdAt: serverTimestamp()
                             });
                         }
-                    } catch (e) { if(e.code === 'permission-denied') setPermissionError(true); }
+                    } catch (e) {}
                 };
-                checkAndCreateBalance();
-            }, [selectedDate, services, deposits]); 
+                checkBalance();
+            }, [selectedDate, services, deposits, activeTabId, tables]);
 
-            // Cálculos Totais
-            const currentServices = useMemo(() => services.filter(s => {
-                if(!s.date) return false;
-                const d = new Date(s.date + 'T12:00:00');
-                return d.getMonth() === selectedDate.getMonth() && d.getFullYear() === selectedDate.getFullYear();
-            }).sort((a,b) => new Date(a.date) - new Date(b.date)), [services, selectedDate]);
-
-            const currentDeposits = useMemo(() => deposits.filter(d => {
-                if(!d.date) return false;
-                const date = new Date(d.date + 'T12:00:00');
-                return date.getMonth() === selectedDate.getMonth() && date.getFullYear() === selectedDate.getFullYear();
-            }), [deposits, selectedDate]);
-
-            const totals = useMemo(() => {
-                const prog = currentServices.reduce((acc, c) => acc + (Number(c.value)||0), 0);
-                const paid = currentServices.reduce((acc, c) => acc + (Number(c.paidValue)||0), 0);
-                const done = currentServices.filter(s => s.status === 'CONCLUÍDO').length;
-                const remaining = currentServices.length - done;
-                const depTotal = currentDeposits.reduce((acc, c) => acc + (Number(c.amount)||0), 0);
-                const saldo = depTotal - prog; 
-                return { prog, paid, done, remaining, depTotal, saldo };
-            }, [currentServices, currentDeposits]);
-
-            // Ações
-            const handleLogout = () => confirm("Sair do sistema?") && signOut(auth);
-            const handlePrint = () => window.print(); // Função simples de imprimir
-            const changeMonth = (offset) => {
-                const d = new Date(selectedDate);
-                d.setMonth(d.getMonth() + offset);
-                setSelectedDate(d);
-            };
+            // CRUD Ações (Agora incluem tableId)
+            const handleLogout = () => confirm("Sair?") && signOut(auth);
+            const handlePrint = () => window.print();
+            const changeMonth = (o) => { const d = new Date(selectedDate); d.setMonth(d.getMonth() + o); setSelectedDate(d); };
+            
             const addService = async () => {
+                if (!activeTabId) return;
                 const today = new Date();
                 let d = today.toISOString().split('T')[0];
                 if(today.getMonth() !== selectedDate.getMonth()) { d = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1, 12).toISOString().split('T')[0]; }
-                try { await addDoc(collection(db, 'apps', APP_ID, 'users', user.uid, 'services'), { date: d, value: 0, paidValue: 0, status: 'PENDENTE', createdAt: serverTimestamp() }); } catch(e) { if(e.code==='permission-denied')setPermissionError(true); }
+                await addDoc(collection(db, 'apps', APP_ID, 'users', user.uid, 'services'), { 
+                    date: d, value: 0, paidValue: 0, status: 'PENDENTE', tableId: activeTabId, createdAt: serverTimestamp() 
+                });
             };
-            const updService = async (id, f, v) => { try { await updateDoc(doc(db, 'apps', APP_ID, 'users', user.uid, 'services', id), {[f]:v}); } catch(e) { if(e.code==='permission-denied')setPermissionError(true); } };
-            const delService = async (id) => { if(confirm("Excluir?")) { try { await deleteDoc(doc(db, 'apps', APP_ID, 'users', user.uid, 'services', id)); } catch(e) { if(e.code==='permission-denied')setPermissionError(true); } } };
-            const addDeposit = async () => { const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1, 12).toISOString().split('T')[0]; try { await addDoc(collection(db, 'apps', APP_ID, 'users', user.uid, 'deposits'), { date: d, amount: 0, createdAt: serverTimestamp() }); } catch(e) { if(e.code==='permission-denied')setPermissionError(true); } };
-            const updDeposit = async (id, f, v) => { try { await updateDoc(doc(db, 'apps', APP_ID, 'users', user.uid, 'deposits', id), {[f]:v}); } catch(e) { if(e.code==='permission-denied')setPermissionError(true); } };
-            const delDeposit = async (id) => { if(confirm("Excluir?")) { try { await deleteDoc(doc(db, 'apps', APP_ID, 'users', user.uid, 'deposits', id)); } catch(e) { if(e.code==='permission-denied')setPermissionError(true); } } };
+            const updService = (id, f, v) => updateDoc(doc(db, 'apps', APP_ID, 'users', user.uid, 'services', id), {[f]:v});
+            const delService = (id) => confirm("Excluir?") && deleteDoc(doc(db, 'apps', APP_ID, 'users', user.uid, 'services', id));
+
+            const addDeposit = async () => {
+                if (!activeTabId) return;
+                const d = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1, 12).toISOString().split('T')[0]; 
+                await addDoc(collection(db, 'apps', APP_ID, 'users', user.uid, 'deposits'), { 
+                    date: d, amount: 0, tableId: activeTabId, createdAt: serverTimestamp() 
+                });
+            };
+            const updDeposit = (id, f, v) => updateDoc(doc(db, 'apps', APP_ID, 'users', user.uid, 'deposits', id), {[f]:v});
+            const delDeposit = (id) => confirm("Excluir?") && deleteDoc(doc(db, 'apps', APP_ID, 'users', user.uid, 'deposits', id));
 
             const format = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
             const getDay = (ds) => ds ? ['DOMINGO','SEGUNDA','TERÇA','QUARTA','QUINTA','SEXTA','SÁBADO'][new Date(ds+'T12:00:00').getDay()] : '-';
 
             // Cores
-            const hY = "bg-[#FFE699]"; 
-            const hB = "bg-[#D9E1F2]";
-            const cC = "bg-[#00B0F0]";
-            const cB = "text-[#0070C0]";
-            const sY = "bg-[#FFFF00]";
-            const sG = "bg-[#D9D9D9]";
-
-            // Helper para calcular "A PAGAR"
-            const debtValue = totals.saldo < 0 ? Math.abs(totals.saldo) : 0;
+            const hY = "bg-[#FFE699]"; const hB = "bg-[#D9E1F2]"; const cC = "bg-[#00B0F0]"; const cB = "text-[#0070C0]"; const sY = "bg-[#FFFF00]"; const sG = "bg-[#D9D9D9]";
 
             if (loading) return <div className="flex items-center justify-center h-screen bg-gray-50 text-gray-500">Carregando...</div>;
             if (!user) return <LoginScreen />;
-
-            if (permissionError) return (
-                <div className="min-h-screen flex items-center justify-center bg-gray-800 p-4">
-                    <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-2xl border border-red-500">
-                        <div className="flex items-center gap-3 mb-6 text-red-600"><ShieldAlert className="w-10 h-10" /><h2 className="text-2xl font-bold">Banco de Dados Bloqueado</h2></div>
-                        <p className="mb-4 text-gray-700">O Firebase está bloqueando o acesso aos seus dados por segurança. Adicione as regras no console.</p>
-                        <button onClick={() => window.location.reload()} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg">Tentar novamente</button>
-                    </div>
-                </div>
-            );
+            if (permissionError) return <div className="p-8 text-center text-red-600 font-bold">Erro de Permissão. Verifique o Console Firebase.</div>;
 
             return (
                 <div className="min-h-screen bg-gray-100 p-2 md:p-4 font-sans text-sm md:text-base">
+                    
+                    {/* --- BARRA DE ABAS (Tabelas) --- */}
+                    <div className="max-w-7xl mx-auto mb-4 no-print">
+                        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-2">
+                            {tables.map(tab => (
+                                <div 
+                                    key={tab.id}
+                                    className={`
+                                        flex items-center gap-2 px-4 py-2 rounded-t-lg border-b-2 cursor-pointer transition-all min-w-fit
+                                        ${activeTabId === tab.id ? 'bg-white border-blue-600 text-blue-600 font-bold shadow-sm' : 'bg-gray-200 border-transparent text-gray-500 hover:bg-gray-300'}
+                                    `}
+                                    onClick={() => setActiveTabId(tab.id)}
+                                >
+                                    {editingTabId === tab.id ? (
+                                        <input 
+                                            autoFocus
+                                            type="text" 
+                                            value={tempTabName} 
+                                            onChange={(e) => setTempTabName(e.target.value)}
+                                            onBlur={saveTabName}
+                                            onKeyDown={(e) => e.key === 'Enter' && saveTabName()}
+                                            className="bg-white border border-blue-400 rounded px-1 text-xs uppercase w-24"
+                                        />
+                                    ) : (
+                                        <span onDoubleClick={() => startEditingTab(tab)} title="Clique duplo para renomear">{tab.name}</span>
+                                    )}
+                                    {activeTabId === tab.id && !editingTabId && (
+                                        <button onClick={(e) => { e.stopPropagation(); startEditingTab(tab); }} className="text-blue-400 hover:text-blue-800">
+                                            <Edit2 className="w-3 h-3" />
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                            <button 
+                                onClick={createNewTab}
+                                className="px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-600 font-bold transition-colors"
+                                title="Nova Tabela"
+                            >
+                                +
+                            </button>
+                        </div>
+                    </div>
+
                     {/* Header */}
                     <div className="max-w-7xl mx-auto mb-6 flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
@@ -417,16 +452,14 @@
                             <button onClick={addService} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium shadow-sm"><Plus className="w-4 h-4" /> Novo Serviço</button>
                             <button onClick={handleLogout} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 rounded-lg shadow-sm" title="Sair"><LogOut className="w-4 h-4" /></button>
                         </div>
-                        {/* Data visível apenas no relatório impresso */}
                         <div className="hidden print:block text-2xl font-bold uppercase text-center mb-6">{selectedDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</div>
                     </div>
 
                     {/* Grid Principal */}
                     <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
                         
-                        {/* 1. Sidebar (ESQUERDA na tela, ESQUERDA na impressão) */}
+                        {/* Sidebar */}
                         <div className="flex flex-col gap-6 order-2 lg:order-1">
-                            {/* Resumo Financeiro */}
                             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 print-break-inside-avoid">
                                 <h3 className="text-sm font-bold text-gray-500 mb-3 uppercase tracking-wider border-b pb-2">Resumo Financeiro</h3>
                                 <div className="border border-gray-800 text-center font-bold text-sm">
@@ -435,24 +468,17 @@
                                     <div className="grid grid-cols-2 border-b border-gray-800"><div className={`${sY} p-2 border-r border-gray-800 flex items-center justify-center`}>CONCLUÍDOS</div><div className={`${sG} p-2 flex items-center justify-center text-lg`}>{totals.done}</div></div>
                                     <div className="grid grid-cols-2 border-b border-gray-800"><div className={`${sY} p-2 border-r border-gray-800 flex items-center justify-center`}>SERVIÇOS RESTANTES</div><div className={`${sG} p-2 flex items-center justify-center text-lg`}>{totals.remaining}</div></div>
                                     
-                                    {/* SALDO COM CRÉDITO ABAIXO */}
                                     <div className="grid grid-cols-2 border-b border-gray-800">
-                                        <div className={`${sY} p-2 border-r border-gray-800 flex flex-col items-center justify-center leading-tight`}>
-                                            <span>SALDO</span>
-                                            <span className="text-[10px] font-normal">CRÉDITO</span>
-                                        </div>
+                                        <div className={`${sY} p-2 border-r border-gray-800 flex flex-col items-center justify-center leading-tight`}><span>SALDO</span><span className="text-[10px] font-normal">CRÉDITO</span></div>
                                         <div className={`${sG} p-2 flex items-center justify-center text-lg text-gray-800`}>{format(totals.saldo)}</div>
                                     </div>
-
-                                    {/* LINHA A PAGAR (Reposicionada para baixo) */}
                                     <div className="grid grid-cols-2">
                                         <div className={`${sY} p-2 border-r border-gray-800 flex items-center justify-center`}>A PAGAR</div>
-                                        <div className={`${sG} p-2 flex items-center justify-center text-lg ${totals.saldo < 0 ? 'text-red-600' : 'text-gray-800'}`}>{format(debtValue)}</div>
+                                        <div className={`${sG} p-2 flex items-center justify-center text-lg ${totals.saldo < 0 ? 'text-red-600' : 'text-gray-800'}`}>{format(totals.debt)}</div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Tabela de Depósitos */}
                             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden print-break-inside-avoid">
                                 <div className="flex justify-between items-center p-3 bg-gray-50 border-b border-gray-200">
                                     <h3 className="font-bold text-gray-700 text-sm uppercase">Depósitos</h3>
@@ -469,14 +495,7 @@
                                                 </td>
                                                 <td className="p-2 text-right font-bold text-green-700 align-top">
                                                     <div className="flex justify-end gap-1"><span className="text-xs text-gray-400">R$</span>
-                                                    {/* AJUSTE VISUAL DE ARREDONDAMENTO DO INPUT */}
-                                                    <input 
-                                                        type="number" 
-                                                        step="0.01" 
-                                                        value={Math.round((d.amount || 0) * 100) / 100} 
-                                                        onChange={e=>updDeposit(d.id,'amount',parseFloat(e.target.value))} 
-                                                        className="w-16 text-right bg-transparent outline-none" 
-                                                    />
+                                                    <input type="number" step="0.01" value={Math.round((d.amount||0)*100)/100} onChange={e=>updDeposit(d.id,'amount',parseFloat(e.target.value))} className="w-16 text-right bg-transparent outline-none" />
                                                     </div>
                                                 </td>
                                                 <td className="p-2 align-top no-print"><button onClick={()=>delDeposit(d.id)} className="text-gray-400 hover:text-red-500"><Trash2 className="w-3 h-3" /></button></td>
@@ -488,7 +507,7 @@
                             </div>
                         </div>
 
-                        {/* 2. Tabela Principal (DIREITA na tela, DIREITA na impressão) */}
+                        {/* Tabela Principal */}
                         <div className="lg:col-span-3 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 order-1 lg:order-2">
                             <div className="overflow-x-auto">
                                 <table className="w-full border-collapse min-w-[800px]">
@@ -496,7 +515,8 @@
                                         <tr>
                                             <th className={`border border-gray-400 p-2 w-16 text-center font-bold ${hY}`}>{currentServices.length} <br/> <span className="text-xs font-normal">DIAS</span></th>
                                             <th className={`border border-gray-400 p-2 text-center font-bold ${hY}`}>SERVIÇOS <br/> <span className="text-xs font-normal">SEMANA</span></th>
-                                            <th colSpan="6" className={`border border-gray-400 p-2 text-center font-bold ${hB} text-lg uppercase`}>CONTROLE MENSAL - {user?.email?.split('@')[0]}</th>
+                                            {/* Nome da Aba Ativa no Cabeçalho */}
+                                            <th colSpan="6" className={`border border-gray-400 p-2 text-center font-bold ${hB} text-lg uppercase`}>CONTROLE MENSAL - {activeTabName}</th>
                                         </tr>
                                         <tr className="text-xs md:text-sm uppercase bg-[#E2EFDA]">
                                             <th className="border border-gray-400 p-2 w-32">STATUS</th>
@@ -528,7 +548,7 @@
                                                 </tr>
                                             );
                                         })}
-                                        {currentServices.length===0 && <tr><td colSpan="8" className="p-8 text-center text-gray-400">Nenhum serviço neste mês.</td></tr>}
+                                        {currentServices.length===0 && <tr><td colSpan="8" className="p-8 text-center text-gray-400">Nenhum serviço registrado nesta tabela para este mês.</td></tr>}
                                     </tbody>
                                 </table>
                             </div>
