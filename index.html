@@ -23,7 +23,7 @@
         input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
 
-        /* === ESTILOS DE IMPRESSÃO === */
+        /* === ESTILOS DE IMPRESSÃO (OTIMIZADO PARA UMA PÁGINA) === */
         @media print {
             @page { size: landscape; margin: 5mm; }
             
@@ -41,6 +41,7 @@
             
             .max-w-7xl { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
             
+            /* Grid Principal (Página) */
             .grid.lg\:grid-cols-4 { 
                 display: grid !important; 
                 grid-template-columns: 320px 1fr !important; 
@@ -48,12 +49,14 @@
                 align-items: start !important;
             }
             
+            /* Grid do Resumo Financeiro */
             .grid.grid-cols-2 {
                 display: grid !important;
                 grid-template-columns: 1fr 1fr !important;
                 width: 100% !important;
             }
             
+            /* Reordenação visual */
             .order-1 { order: 2 !important; } 
             .order-2 { order: 1 !important; } 
             
@@ -194,7 +197,9 @@
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(true);
             const [permissionError, setPermissionError] = useState(false);
-            const [selectedDate, setSelectedDate] = useState(new Date(2025, 8, 1)); // Setembro 2025
+            
+            // MUDANÇA AQUI: Inicia sempre com a data atual (Mês Vigente)
+            const [selectedDate, setSelectedDate] = useState(new Date()); 
 
             // Dados
             const [services, setServices] = useState([]);
