@@ -23,16 +23,15 @@
         input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
 
-        /* === ESTILOS DE IMPRESSÃO (OTIMIZADO PARA UMA PÁGINA) === */
+        /* === ESTILOS DE IMPRESSÃO (CORRIGIDO) === */
         @media print {
-            /* Configura a página para Paisagem (Deitada) para caber lado a lado */
             @page { size: landscape; margin: 5mm; }
             
             body { 
                 background-color: white; 
                 -webkit-print-color-adjust: exact; 
                 print-color-adjust: exact;
-                zoom: 85%; /* Compacta o conteúdo para caber na folha */
+                zoom: 90%; 
             }
 
             .no-print { display: none !important; } 
@@ -40,41 +39,47 @@
             .bg-gray-100 { background-color: white !important; }
             .text-white { color: black !important; }
             
-            /* Layout Lado a Lado (Grid) */
-            .max-w-7xl { 
-                max-width: 100% !important; 
-                margin: 0 !important; 
-                padding: 0 !important; 
-            }
+            /* Container Principal */
+            .max-w-7xl { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
             
-            /* Restaura o Grid para 2 colunas (Resumo | Tabela) */
-            .grid { 
+            /* --- CORREÇÃO DOS GRIDS --- */
+            
+            /* 1. Grid Principal (Layout da Página) */
+            /* Seleciona especificamente o grid que divide a página em colunas */
+            .grid.lg\:grid-cols-4 { 
                 display: grid !important; 
-                grid-template-columns: 300px 1fr !important; /* Resumo fixo, Tabela flexível */
-                gap: 15px !important;
+                grid-template-columns: 320px 1fr !important; /* Coluna fixa para resumo, resto para tabela */
+                gap: 20px !important;
                 align-items: start !important;
             }
             
-            /* Força a ordem visual (Resumo na Esquerda, Tabela na Direita) */
-            .order-1 { order: 2 !important; } /* Tabela na direita */
-            .order-2 { order: 1 !important; } /* Resumo na esquerda */
+            /* 2. Grid Interno (Resumo Financeiro) */
+            /* Garante que as linhas do resumo fiquem 50% / 50% */
+            .grid.grid-cols-2 {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                width: 100% !important;
+            }
             
-            /* Tabela Compacta */
+            /* Reordenar: Resumo na Esquerda (1), Tabela na Direita (2) */
+            .order-1 { order: 2 !important; } 
+            .order-2 { order: 1 !important; } 
+            
+            /* Tabelas */
             table { width: 100% !important; font-size: 10pt !important; border-collapse: collapse !important; }
-            th, td { padding: 4px !important; border: 1px solid #444 !important; height: auto !important; }
+            th, td { padding: 4px !important; border: 1px solid #444 !important; }
             
-            /* Inputs limpos */
-            input { font-weight: bold !important; color: #000 !important; background: transparent !important; border: none !important; padding: 0 !important; margin: 0 !important; }
+            /* Inputs */
+            input { font-weight: bold !important; color: #000 !important; background: transparent !important; border: none !important; padding: 0 !important; margin: 0 !important; width: 100%; text-align: inherit; }
             input[type="date"]::-webkit-calendar-picker-indicator { display: none; }
 
-            /* Cores Vibrantes na Impressão */
+            /* Cores */
             .bg-\[\#FFE699\] { background-color: #FFE699 !important; }
             .bg-\[\#D9E1F2\] { background-color: #D9E1F2 !important; }
             .bg-\[\#00B0F0\] { background-color: #00B0F0 !important; color: black !important; font-weight: bold; }
             .bg-\[\#FFFF00\] { background-color: #FFFF00 !important; }
             .bg-\[\#D9D9D9\] { background-color: #D9D9D9 !important; }
             
-            /* Remove barras de rolagem */
             .overflow-hidden { overflow: visible !important; }
             .overflow-x-auto { overflow: visible !important; }
         }
