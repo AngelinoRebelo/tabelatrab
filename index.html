@@ -148,7 +148,7 @@
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(true);
             const [permissionError, setPermissionError] = useState(false);
-            const [selectedDate, setSelectedDate] = useState(new Date(2025, 9, 1)); // Outubro 2025
+            const [selectedDate, setSelectedDate] = useState(new Date(2025, 8, 1)); // Setembro 2025
 
             // Dados
             const [services, setServices] = useState([]);
@@ -163,40 +163,63 @@
                 return () => unsubscribe();
             }, []);
 
-            // Preenchimento Automático (Outubro/2025)
+            // Preenchimento Automático Inicial (Demo)
             useEffect(() => {
                 if (!user || !db || permissionError) return;
                 const populate = async () => {
-                    try {
-                        const sRef = collection(db, 'apps', APP_ID, 'users', user.uid, 'services');
-                        const q = query(sRef, where('date', '==', '2025-10-04'));
-                        const snap = await getDocs(q);
-                        if (!snap.empty) return;
+                    const batch = writeBatch(db);
+                    let hasUpdates = false;
 
-                        console.log("Criando dados iniciais...");
-                        const batch = writeBatch(db);
+                    // SETEMBRO 2025 (Demo)
+                    const sRef = collection(db, 'apps', APP_ID, 'users', user.uid, 'services');
+                    const qSet = query(sRef, where('date', '==', '2025-09-22'));
+                    const snapSet = await getDocs(qSet);
 
-                        // Depósito Inicial
+                    if (snapSet.empty) {
+                        hasUpdates = true;
+                        // Saldo Inicial de Agosto
                         const dRef = collection(db, 'apps', APP_ID, 'users', user.uid, 'deposits');
-                        const qD = query(dRef, where('date', '==', '2025-10-01'));
-                        const snapD = await getDocs(qD);
-                        if (snapD.empty) {
-                            batch.set(doc(dRef), { date: '2025-10-01', amount: 3222.97, description: 'SALDO MÊS DE SETEMBRO', createdAt: serverTimestamp() });
-                        }
+                        const newDeposit = doc(dRef);
+                        batch.set(newDeposit, { 
+                            date: '2025-09-01', 
+                            amount: 3622.97, 
+                            description: 'SALDO MÊS DE AGOSTO', 
+                            type: 'manual_initial', // Marcador para não ser sobrescrito se Agosto estiver vazio
+                            createdAt: serverTimestamp() 
+                        });
 
-                        // Serviços Iniciais
-                        const initialData = [
+                        const servicesSet = [
+                            { date: '2025-09-22', value: 200, paidValue: 200, status: 'CONCLUÍDO' },
+                            { date: '2025-09-26', value: 200, paidValue: 200, status: 'CONCLUÍDO' },
+                        ];
+                        servicesSet.forEach(d => {
+                            const newService = doc(sRef);
+                            batch.set(newService, { ...d, description: 'Serviço', createdAt: serverTimestamp() });
+                        });
+                    }
+
+                    // OUTUBRO 2025 (Demo)
+                    const qOut = query(sRef, where('date', '==', '2025-10-04'));
+                    const snapOut = await getDocs(qOut);
+
+                    if (snapOut.empty) {
+                        hasUpdates = true;
+                        // Serviços Outubro
+                        const servicesOut = [
                             { date: '2025-10-04', value: 200, paidValue: 200, status: 'CONCLUÍDO' },
                             { date: '2025-10-06', value: 200, paidValue: 200, status: 'CONCLUÍDO' },
                             { date: '2025-10-08', value: 200, paidValue: 200, status: 'CONCLUÍDO' },
                             { date: '2025-10-14', value: 200, paidValue: 200, status: 'CONCLUÍDO' },
                         ];
-                        initialData.forEach(d => batch.set(doc(sRef), { ...d, description: 'Serviço', createdAt: serverTimestamp() }));
-                        
-                        await batch.commit();
-                    } catch (e) {
-                        console.error("Erro no preenchimento:", e);
-                        if (e.code === 'permission-denied') setPermissionError(true);
+                        servicesOut.forEach(d => {
+                            const newService = doc(sRef);
+                            batch.set(newService, { ...d, description: 'Serviço', createdAt: serverTimestamp() });
+                        });
+                    }
+
+                    if (hasUpdates) {
+                        try { await batch.commit(); } 
+                        catch(e) { if(e.code === 'permission-denied') setPermissionError(true); }
                     }
                 };
                 populate();
@@ -205,29 +228,82 @@
             // Listeners em Tempo Real
             useEffect(() => {
                 if (!user || !db) return;
-                
                 const qS = query(collection(db, 'apps', APP_ID, 'users', user.uid, 'services'));
-                const unsubS = onSnapshot(qS, 
-                    (snap) => setServices(snap.docs.map(d => ({id: d.id, ...d.data()}))),
-                    (error) => {
-                        console.error("Erro Listener Serviços:", error);
-                        if (error.code === 'permission-denied') setPermissionError(true);
-                    }
-                );
-
+                const unsubS = onSnapshot(qS, (snap) => setServices(snap.docs.map(d => ({id: d.id, ...d.data()}))), (e) => {if(e.code==='permission-denied')setPermissionError(true)});
                 const qD = query(collection(db, 'apps', APP_ID, 'users', user.uid, 'deposits'));
-                const unsubD = onSnapshot(qD, 
-                    (snap) => setDeposits(snap.docs.map(d => ({id: d.id, ...d.data()}))),
-                    (error) => {
-                        console.error("Erro Listener Depósitos:", error);
-                        if (error.code === 'permission-denied') setPermissionError(true);
-                    }
-                );
-
+                const unsubD = onSnapshot(qD, (snap) => setDeposits(snap.docs.map(d => ({id: d.id, ...d.data()}))), (e) => {if(e.code==='permission-denied')setPermissionError(true)});
                 return () => { unsubS(); unsubD(); };
             }, [user]);
 
-            // Cálculos
+            // === LÓGICA DE SALDO MÊS ANTERIOR (Automático) ===
+            useEffect(() => {
+                if (!user || loading || services.length === 0) return;
+
+                const checkAndCreateBalance = async () => {
+                    // 1. Define Mês Anterior
+                    const prevDate = new Date(selectedDate);
+                    prevDate.setMonth(selectedDate.getMonth() - 1);
+                    
+                    // 2. Filtra dados do Mês Anterior
+                    const pServices = services.filter(s => {
+                        const d = new Date(s.date + 'T12:00:00');
+                        return d.getMonth() === prevDate.getMonth() && d.getFullYear() === prevDate.getFullYear();
+                    });
+                    const pDeposits = deposits.filter(d => {
+                        const dDate = new Date(d.date + 'T12:00:00');
+                        return dDate.getMonth() === prevDate.getMonth() && dDate.getFullYear() === prevDate.getFullYear();
+                    });
+
+                    // Se mês anterior estiver vazio, não faz nada
+                    if (pServices.length === 0 && pDeposits.length === 0) return;
+
+                    // 3. Calcula Saldo Final do Mês Anterior
+                    const pPaid = pServices.reduce((acc, c) => acc + (Number(c.paidValue)||0), 0);
+                    const pDepTotal = pDeposits.reduce((acc, c) => acc + (Number(c.amount)||0), 0);
+                    const prevBalance = pDepTotal - pPaid;
+
+                    // 4. Procura registro no Mês Atual
+                    const prevMonthName = prevDate.toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase();
+                    const expectedDesc = `SALDO MÊS DE ${prevMonthName}`;
+                    
+                    const cDeposits = deposits.filter(d => {
+                        const dDate = new Date(d.date + 'T12:00:00');
+                        return dDate.getMonth() === selectedDate.getMonth() && dDate.getFullYear() === selectedDate.getFullYear();
+                    });
+
+                    const existingEntry = cDeposits.find(d => 
+                        d.description === expectedDesc || d.type === 'balance_carryover'
+                    );
+
+                    // 5. Atualiza ou Cria
+                    try {
+                        if (existingEntry) {
+                            if (Math.abs((existingEntry.amount || 0) - prevBalance) > 0.01) {
+                                await updateDoc(doc(db, 'apps', APP_ID, 'users', user.uid, 'deposits', existingEntry.id), {
+                                    amount: prevBalance,
+                                    description: expectedDesc,
+                                    type: 'balance_carryover'
+                                });
+                            }
+                        } else {
+                            const newDateStr = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1, 12).toISOString().split('T')[0];
+                            await addDoc(collection(db, 'apps', APP_ID, 'users', user.uid, 'deposits'), {
+                                date: newDateStr,
+                                amount: prevBalance,
+                                description: expectedDesc,
+                                type: 'balance_carryover',
+                                createdAt: serverTimestamp()
+                            });
+                        }
+                    } catch (e) {
+                        if(e.code === 'permission-denied') setPermissionError(true);
+                    }
+                };
+
+                checkAndCreateBalance();
+            }, [selectedDate, services, deposits]); 
+
+            // Cálculos Totais (Visualização)
             const currentServices = useMemo(() => services.filter(s => {
                 if(!s.date) return false;
                 const d = new Date(s.date + 'T12:00:00');
@@ -246,7 +322,10 @@
                 const done = currentServices.filter(s => s.status === 'CONCLUÍDO').length;
                 const remaining = currentServices.length - done;
                 const depTotal = currentDeposits.reduce((acc, c) => acc + (Number(c.amount)||0), 0);
-                const saldo = depTotal - paid;
+                
+                // AJUSTE: Saldo = Depósitos - Programado (conforme Imagem 1: 3222 - 800 = 2422)
+                const saldo = depTotal - prog;
+                
                 return { prog, paid, done, remaining, depTotal, saldo };
             }, [currentServices, currentDeposits]);
 
@@ -315,7 +394,6 @@
             if (loading) return <div className="flex items-center justify-center h-screen bg-gray-50 text-gray-500">Carregando...</div>;
             if (!user) return <LoginScreen />;
 
-            // --- TELA DE ERRO DE PERMISSÃO ---
             if (permissionError) {
                 return (
                     <div className="min-h-screen flex items-center justify-center bg-gray-800 p-4">
@@ -328,7 +406,6 @@
                                 O Firebase está bloqueando o acesso aos seus dados por segurança. Isso é normal em projetos novos.
                                 <br/>Para corrigir, você precisa adicionar as <strong>Regras de Segurança</strong> no painel.
                             </p>
-                            
                             <div className="bg-gray-100 p-4 rounded-lg mb-6 border border-gray-300">
                                 <h3 className="font-bold text-sm text-gray-500 uppercase mb-2">1. Vá até o Firebase Console > Firestore Database > Regras</h3>
                                 <h3 className="font-bold text-sm text-gray-500 uppercase mb-2">2. Substitua o código existente por este:</h3>
@@ -336,7 +413,6 @@
 {`rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Permite que cada usuário leia/escreva APENAS seus próprios dados
     match /apps/{appId}/users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
@@ -373,33 +449,29 @@ service cloud.firestore {
                     {/* Grid Principal */}
                     <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
                         
-                        {/* 1. Sidebar (ESQUERDA - Ordem ajustada) */}
+                        {/* 1. Sidebar (ESQUERDA) */}
                         <div className="flex flex-col gap-6 order-2 lg:order-1">
-                            {/* Resumo Financeiro (NOVO LAYOUT HORIZONTAL) */}
+                            {/* Resumo Financeiro */}
                             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                                 <h3 className="text-sm font-bold text-gray-500 mb-3 uppercase tracking-wider border-b pb-2">Resumo Financeiro</h3>
                                 <div className="border border-gray-800 text-center font-bold text-sm">
-                                    {/* Linha 1 */}
                                     <div className="grid grid-cols-2 border-b border-gray-800">
                                         <div className={`${sY} p-2 border-r border-gray-800 flex items-center justify-center`}>SERV. PROGRAMADOS</div>
                                         <div className={`${sG} p-2 flex items-center justify-center text-lg`}>{format(totals.prog)}</div>
                                     </div>
-                                    {/* Linha 2 */}
                                     <div className="grid grid-cols-2 border-b border-gray-800">
+                                        {/* AJUSTE: O rótulo "TOTAL PAGO" agora exibe o total de DEPÓSITOS */}
                                         <div className={`${sY} p-2 border-r border-gray-800 flex items-center justify-center`}>TOTAL PAGO</div>
-                                        <div className={`${sG} p-2 flex items-center justify-center text-lg`}>{format(totals.paid)}</div>
+                                        <div className={`${sG} p-2 flex items-center justify-center text-lg`}>{format(totals.depTotal)}</div>
                                     </div>
-                                    {/* Linha 3 */}
                                     <div className="grid grid-cols-2 border-b border-gray-800">
                                         <div className={`${sY} p-2 border-r border-gray-800 flex items-center justify-center`}>CONCLUÍDOS</div>
                                         <div className={`${sG} p-2 flex items-center justify-center text-lg`}>{totals.done}</div>
                                     </div>
-                                    {/* Linha 4 */}
                                     <div className="grid grid-cols-2 border-b border-gray-800">
                                         <div className={`${sY} p-2 border-r border-gray-800 flex items-center justify-center`}>SERVIÇOS RESTANTES</div>
                                         <div className={`${sG} p-2 flex items-center justify-center text-lg`}>{totals.remaining}</div>
                                     </div>
-                                    {/* Linha 5 (Saldo) */}
                                     <div className="grid grid-cols-2">
                                         <div className={`${sY} p-2 border-r border-gray-800 flex items-center justify-center`}>SALDO</div>
                                         <div className={`${sG} p-2 flex items-center justify-center text-lg text-gray-800`}>{format(totals.saldo)}</div>
@@ -434,7 +506,7 @@ service cloud.firestore {
                             </div>
                         </div>
 
-                        {/* 2. Tabela Principal (DIREITA - Ordem ajustada) */}
+                        {/* 2. Tabela Principal (DIREITA) */}
                         <div className="lg:col-span-3 bg-white rounded-lg shadow-sm overflow-hidden border border-gray-300 order-1 lg:order-2">
                             <div className="overflow-x-auto">
                                 <table className="w-full border-collapse min-w-[800px]">
@@ -458,7 +530,7 @@ service cloud.firestore {
                                     <tbody>
                                         {currentServices.map(s => {
                                             const toPay = (Number(s.value)||0) - (Number(s.paidValue)||0);
-                                            const isOk = s.status === 'CONCLUÍDO'; // Lógica: OK se Concluído
+                                            const isOk = s.status === 'CONCLUÍDO';
                                             return (
                                                 <tr key={s.id} className="hover:bg-gray-50 text-sm font-medium">
                                                     <td className="border border-gray-300 p-0">
