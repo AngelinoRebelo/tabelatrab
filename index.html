@@ -198,7 +198,6 @@
             const [loading, setLoading] = useState(true);
             const [permissionError, setPermissionError] = useState(false);
             
-            // MUDANÇA AQUI: Inicia sempre com a data atual (Mês Vigente)
             const [selectedDate, setSelectedDate] = useState(new Date()); 
 
             // Dados
@@ -300,7 +299,6 @@
                     const pPaid = pServices.reduce((acc, c) => acc + (Number(c.paidValue)||0), 0);
                     const pDepTotal = pDeposits.reduce((acc, c) => acc + (Number(c.amount)||0), 0);
                     
-                    // AJUSTE CRÍTICO: Arredonda o cálculo para 2 casas decimais para evitar dízimas (ex: 1422.969999)
                     const rawBalance = pDepTotal - pPaid;
                     const prevBalance = Math.round(rawBalance * 100) / 100;
 
@@ -316,7 +314,6 @@
 
                     try {
                         if (existingEntry) {
-                            // Só atualiza se houver diferença maior que 1 centavo
                             if (Math.abs((existingEntry.amount || 0) - prevBalance) > 0.01) {
                                 await updateDoc(doc(db, 'apps', APP_ID, 'users', user.uid, 'deposits', existingEntry.id), {
                                     amount: prevBalance, description: expectedDesc, type: 'balance_carryover'
@@ -387,6 +384,9 @@
             const sY = "bg-[#FFFF00]";
             const sG = "bg-[#D9D9D9]";
 
+            // Helper para calcular "A PAGAR"
+            const debtValue = totals.saldo < 0 ? Math.abs(totals.saldo) : 0;
+
             if (loading) return <div className="flex items-center justify-center h-screen bg-gray-50 text-gray-500">Carregando...</div>;
             if (!user) return <LoginScreen />;
 
@@ -434,7 +434,12 @@
                                     <div className="grid grid-cols-2 border-b border-gray-800"><div className={`${sY} p-2 border-r border-gray-800 flex items-center justify-center`}>TOTAL PAGO</div><div className={`${sG} p-2 flex items-center justify-center text-lg`}>{format(totals.depTotal)}</div></div>
                                     <div className="grid grid-cols-2 border-b border-gray-800"><div className={`${sY} p-2 border-r border-gray-800 flex items-center justify-center`}>CONCLUÍDOS</div><div className={`${sG} p-2 flex items-center justify-center text-lg`}>{totals.done}</div></div>
                                     <div className="grid grid-cols-2 border-b border-gray-800"><div className={`${sY} p-2 border-r border-gray-800 flex items-center justify-center`}>SERVIÇOS RESTANTES</div><div className={`${sG} p-2 flex items-center justify-center text-lg`}>{totals.remaining}</div></div>
-                                    <div className="grid grid-cols-2"><div className={`${sY} p-2 border-r border-gray-800 flex items-center justify-center`}>SALDO MÊS ATUAL</div><div className={`${sG} p-2 flex items-center justify-center text-lg text-gray-800`}>{format(totals.saldo)}</div></div>
+                                    <div className="grid grid-cols-2 border-b border-gray-800"><div className={`${sY} p-2 border-r border-gray-800 flex items-center justify-center`}>SALDO</div><div className={`${sG} p-2 flex items-center justify-center text-lg text-gray-800`}>{format(totals.saldo)}</div></div>
+                                    {/* LINHA A PAGAR (Reposicionada) */}
+                                    <div className="grid grid-cols-2">
+                                        <div className={`${sY} p-2 border-r border-gray-800 flex items-center justify-center`}>A PAGAR</div>
+                                        <div className={`${sG} p-2 flex items-center justify-center text-lg ${totals.saldo < 0 ? 'text-red-600' : 'text-gray-800'}`}>{format(debtValue)}</div>
+                                    </div>
                                 </div>
                             </div>
 
