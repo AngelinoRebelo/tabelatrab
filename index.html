@@ -27,7 +27,7 @@
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* === ESTILOS DE IMPRESSÃO (OTIMIZADO PARA UMA PÁGINA) === */
+        /* === ESTILOS DE IMPRESSÃO (OTIMIZADO) === */
         @media print {
             @page { size: landscape; margin: 5mm; }
             
@@ -39,7 +39,20 @@
             }
 
             .no-print { display: none !important; } 
-            .shadow-sm, .shadow-lg, .border { box-shadow: none !important; border-color: #000 !important; }
+            .shadow-sm, .shadow-lg { box-shadow: none !important; }
+            
+            /* CORREÇÃO DAS BORDAS NA IMPRESSÃO */
+            /* Força todas as bordas cinzas a ficarem pretas sólidas */
+            .border-gray-800, .border-gray-400, .border-gray-300, .border-gray-200 { 
+                border-color: #000 !important; 
+                border-style: solid !important;
+            }
+            
+            /* Garante que a borda externa do resumo apareça */
+            .border { border-width: 1px !important; border-color: #000 !important; }
+            .border-b { border-bottom-width: 1px !important; border-color: #000 !important; }
+            .border-r { border-right-width: 1px !important; border-color: #000 !important; }
+
             .bg-gray-100 { background-color: white !important; }
             .text-white { color: black !important; }
             
@@ -196,7 +209,6 @@
                 return onSnapshot(q, (snap) => {
                     const loadedTables = snap.docs.map(d => ({id: d.id, ...d.data()}));
                     if (loadedTables.length === 0) {
-                        // Cria tabela padrão se não existir nenhuma
                         addDoc(collection(db, 'apps', APP_ID, 'users', user.uid, 'tables'), {
                             name: 'VICTORINO',
                             createdAt: serverTimestamp()
@@ -208,13 +220,12 @@
                 }, (err) => { if(err.code === 'permission-denied') setPermissionError(true); });
             }, [user, activeTabId]);
 
-            // Nome da aba ativa
             const activeTabName = useMemo(() => {
                 const t = tables.find(t => t.id === activeTabId);
                 return t ? t.name : 'CARREGANDO...';
             }, [tables, activeTabId]);
 
-            // Carregar Serviços e Depósitos
+            // Carregar Dados
             useEffect(() => {
                 if(!user || !db) return;
                 const qS = query(collection(db, 'apps', APP_ID, 'users', user.uid, 'services'));
@@ -226,7 +237,7 @@
                 return () => { unsubS(); unsubD(); };
             }, [user]);
 
-            // --- Lógica de Filtragem por Aba ---
+            // --- Filtragem ---
             const currentServices = useMemo(() => {
                 if (!activeTabId) return [];
                 const firstTableId = tables.length > 0 ? tables[0].id : null;
