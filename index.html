@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relatório de Serviços - Multi-Tabelas</title>
+    <title>Relatório de Serviços - Victorino</title>
     
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -27,7 +27,7 @@
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* === ESTILOS DE IMPRESSÃO === */
+        /* === ESTILOS DE IMPRESSÃO (OTIMIZADO PARA UMA PÁGINA) === */
         @media print {
             @page { size: landscape; margin: 5mm; }
             
@@ -53,12 +53,14 @@
                 align-items: start !important;
             }
             
+            /* Grid do Resumo Financeiro */
             .grid.grid-cols-2 {
                 display: grid !important;
                 grid-template-columns: 1fr 1fr !important;
                 width: 100% !important;
             }
             
+            /* Reordenação visual */
             .order-1 { order: 2 !important; } 
             .order-2 { order: 1 !important; } 
             
@@ -175,8 +177,8 @@
             // --- ABAS / TABELAS ---
             const [tables, setTables] = useState([]);
             const [activeTabId, setActiveTabId] = useState(null);
-            const [editingTabId, setEditingTabId] = useState(null); // ID da aba sendo editada
-            const [tempTabName, setTempTabName] = useState(""); // Nome temporário na edição
+            const [editingTabId, setEditingTabId] = useState(null); 
+            const [tempTabName, setTempTabName] = useState(""); 
 
             // Dados
             const [services, setServices] = useState([]);
@@ -201,19 +203,18 @@
                         });
                     } else {
                         setTables(loadedTables);
-                        // Se não tiver aba ativa, seleciona a primeira
                         if (!activeTabId) setActiveTabId(loadedTables[0].id);
                     }
                 }, (err) => { if(err.code === 'permission-denied') setPermissionError(true); });
             }, [user, activeTabId]);
 
-            // Nome da aba ativa para exibição
+            // Nome da aba ativa
             const activeTabName = useMemo(() => {
                 const t = tables.find(t => t.id === activeTabId);
                 return t ? t.name : 'CARREGANDO...';
             }, [tables, activeTabId]);
 
-            // Carregar Serviços e Depósitos (Global - filtra no render)
+            // Carregar Serviços e Depósitos
             useEffect(() => {
                 if(!user || !db) return;
                 const qS = query(collection(db, 'apps', APP_ID, 'users', user.uid, 'services'));
@@ -226,14 +227,11 @@
             }, [user]);
 
             // --- Lógica de Filtragem por Aba ---
-            // Filtra serviços/depósitos pela TABELA ATIVA (activeTabId)
-            // Se o registro não tem 'tableId', assume que é da primeira tabela (legado)
             const currentServices = useMemo(() => {
                 if (!activeTabId) return [];
                 const firstTableId = tables.length > 0 ? tables[0].id : null;
                 
                 return services.filter(s => {
-                    // Lógica de migração: se não tem tableId, pertence à primeira tabela criada
                     const itemTableId = s.tableId || firstTableId;
                     if (itemTableId !== activeTabId) return false;
 
@@ -278,21 +276,15 @@
                             name: name.trim().toUpperCase(),
                             createdAt: serverTimestamp()
                         });
-                        setActiveTabId(docRef.id); // Muda para a nova aba
+                        setActiveTabId(docRef.id);
                     } catch(e) { alert("Erro ao criar tabela."); }
                 }
             };
 
-            const startEditingTab = (tab) => {
-                setEditingTabId(tab.id);
-                setTempTabName(tab.name);
-            };
-
+            const startEditingTab = (tab) => { setEditingTabId(tab.id); setTempTabName(tab.name); };
             const saveTabName = async () => {
                 if (tempTabName && tempTabName.trim()) {
-                    await updateDoc(doc(db, 'apps', APP_ID, 'users', user.uid, 'tables', editingTabId), {
-                        name: tempTabName.trim().toUpperCase()
-                    });
+                    await updateDoc(doc(db, 'apps', APP_ID, 'users', user.uid, 'tables', editingTabId), { name: tempTabName.trim().toUpperCase() });
                 }
                 setEditingTabId(null);
             };
@@ -300,13 +292,11 @@
             // --- Saldo Automático ---
             useEffect(() => {
                 if (!user || loading || !activeTabId || tables.length === 0) return;
-                
                 const checkBalance = async () => {
                     const prevDate = new Date(selectedDate);
                     prevDate.setMonth(selectedDate.getMonth() - 1);
                     const firstTableId = tables[0].id;
 
-                    // Filtra dados do Mês Anterior APENAS da tabela ativa
                     const pServices = services.filter(s => {
                         const tid = s.tableId || firstTableId;
                         if (tid !== activeTabId) return false;
@@ -329,7 +319,6 @@
                     const prevMonthName = prevDate.toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase();
                     const expectedDesc = `SALDO MÊS DE ${prevMonthName}`;
                     
-                    // Procura no mês atual desta tabela
                     const existingEntry = currentDeposits.find(d => d.description === expectedDesc || d.type === 'balance_carryover');
 
                     try {
@@ -342,12 +331,7 @@
                         } else {
                             const newDateStr = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1, 12).toISOString().split('T')[0];
                             await addDoc(collection(db, 'apps', APP_ID, 'users', user.uid, 'deposits'), {
-                                date: newDateStr, 
-                                amount: prevBalance, 
-                                description: expectedDesc, 
-                                type: 'balance_carryover', 
-                                tableId: activeTabId, // Importante: associa à tabela atual
-                                createdAt: serverTimestamp()
+                                date: newDateStr, amount: prevBalance, description: expectedDesc, type: 'balance_carryover', tableId: activeTabId, createdAt: serverTimestamp()
                             });
                         }
                     } catch (e) {}
@@ -355,7 +339,7 @@
                 checkBalance();
             }, [selectedDate, services, deposits, activeTabId, tables]);
 
-            // CRUD Ações (Agora incluem tableId)
+            // CRUD Ações
             const handleLogout = () => confirm("Sair?") && signOut(auth);
             const handlePrint = () => window.print();
             const changeMonth = (o) => { const d = new Date(selectedDate); d.setMonth(d.getMonth() + o); setSelectedDate(d); };
@@ -427,13 +411,7 @@
                                     )}
                                 </div>
                             ))}
-                            <button 
-                                onClick={createNewTab}
-                                className="px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-600 font-bold transition-colors"
-                                title="Nova Tabela"
-                            >
-                                +
-                            </button>
+                            <button onClick={createNewTab} className="px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-600 font-bold transition-colors" title="Nova Tabela">+</button>
                         </div>
                     </div>
 
@@ -513,10 +491,17 @@
                                 <table className="w-full border-collapse min-w-[800px]">
                                     <thead>
                                         <tr>
-                                            <th className={`border border-gray-400 p-2 w-16 text-center font-bold ${hY}`}>{currentServices.length} <br/> <span className="text-xs font-normal">DIAS</span></th>
-                                            <th className={`border border-gray-400 p-2 text-center font-bold ${hY}`}>SERVIÇOS <br/> <span className="text-xs font-normal">SEMANA</span></th>
-                                            {/* Nome da Aba Ativa no Cabeçalho */}
-                                            <th colSpan="6" className={`border border-gray-400 p-2 text-center font-bold ${hB} text-lg uppercase`}>CONTROLE DE SERVIÇOS - {activeTabName}</th>
+                                            {/* AJUSTE: COLUNA 1 COM "SERVIÇOS" ACIMA DO NUMERO E REMOÇÃO DE "DIAS" */}
+                                            <th className={`border border-gray-400 p-2 w-24 text-center font-bold ${hY}`}>
+                                                <div className="flex flex-col items-center justify-center leading-none">
+                                                    <span className="text-[10px] mb-1">SERVIÇOS</span>
+                                                    <span className="text-xl">{currentServices.length}</span>
+                                                    {/* DIAS removido aqui */}
+                                                </div>
+                                            </th>
+                                            {/* AJUSTE: COLUNA 2 APENAS "SEMANA" */}
+                                            <th className={`border border-gray-400 p-2 text-center font-bold ${hY}`}>SEMANA</th>
+                                            <th colSpan="6" className={`border border-gray-400 p-2 text-center font-bold ${hB} text-lg uppercase`}>CONTROLE MENSAL - {activeTabName}</th>
                                         </tr>
                                         <tr className="text-xs md:text-sm uppercase bg-[#E2EFDA]">
                                             <th className="border border-gray-400 p-2 w-32">STATUS</th>
